@@ -376,6 +376,20 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
                                                     </div>
                                                 </TooltipTrigger>
                                             </div>
+                                            {(quest.itemReward || quest.materialReward) && (
+                                                <div className="mt-1 flex gap-2">
+                                                    {quest.itemReward && (
+                                                        <span className="text-[10px] text-amber-300 bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-500/30">
+                                                            +Objeto
+                                                        </span>
+                                                    )}
+                                                    {quest.materialReward && (
+                                                        <span className="text-[10px] text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-white/10">
+                                                            +Material
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col items-end">

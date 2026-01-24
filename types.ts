@@ -23,6 +23,15 @@ export enum ItemType {
   FOOD = 'Comida'
 }
 
+export enum MaterialType {
+  SCRAP = 'Chatarra',
+  WOOD = 'Madera',
+  ORE = 'Mineral',
+  LEATHER = 'Cuero',
+  ESSENCE = 'Esencia Mágica',
+  GEM = 'Gema'
+}
+
 export type QuestRarity = 'Común' | 'Poco Común' | 'Raro' | 'Épico' | 'Legendario';
 export type EchoRarity = 'Marchito' | 'Resonante' | 'Luminoso' | 'Ascendido';
 
@@ -37,6 +46,7 @@ export interface Item {
   stats: Partial<Stats>;
   image?: string;
   description: string;
+  upgradeLevel?: number; // 0 to 10+
 }
 
 export interface Echo {
@@ -133,6 +143,9 @@ export interface Player {
   arenaLadder: ArenaOpponent[]; 
   merchantInventory: Item[];
   nextMerchantRefresh: number;
+
+  // Crafting System
+  materials: Record<MaterialType, number>;
 }
 
 export interface Quest {
@@ -147,6 +160,7 @@ export interface Quest {
   description: string;
   recommendedStat: StatType;
   itemReward?: Item;
+  materialReward?: { type: MaterialType, amount: number };
 }
 
 export interface BattleTurn {
@@ -164,6 +178,7 @@ export interface CombatResult {
     rounds: number;
     remainingHp: number;
     turns: BattleTurn[];
+    loot?: { item?: Item, material?: { type: MaterialType, amount: number } };
 }
 
 export interface BattleLog {
@@ -178,6 +193,7 @@ export interface BattleLog {
   roundsTaken: number;
   turns: BattleTurn[];
   rankChange?: number; // How many positions climbed
+  loot?: { item?: Item, material?: { type: MaterialType, amount: number } };
 }
 
 export enum ViewState {
@@ -189,5 +205,6 @@ export enum ViewState {
   BATTLE = 'BATALLA',
   REPORTS = 'INFORMES',
   MERCHANT = 'MERCADER',
-  GACHA = 'ALTAR'
+  GACHA = 'ALTAR',
+  FORGE = 'HERRERIA'
 }

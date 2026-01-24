@@ -1,5 +1,62 @@
 
-import { StatType, ItemType, QuestRarity, EchoRarity, WorldEvent, EventType } from "../types";
+import { StatType, ItemType, QuestRarity, EchoRarity, WorldEvent, EventType, MaterialType } from "../types";
+
+// --- CRAFTING & MATERIALS ---
+
+export const MATERIALS_CONFIG: Record<MaterialType, { name: string, rarity: QuestRarity, cost: number, description: string }> = {
+    [MaterialType.SCRAP]: { name: "Chatarra", rarity: 'Común', cost: 5, description: "Restos de metal y tela inservibles." },
+    [MaterialType.WOOD]: { name: "Madera Noble", rarity: 'Común', cost: 10, description: "Material básico para armas y estructuras." },
+    [MaterialType.LEATHER]: { name: "Cuero Curtido", rarity: 'Poco Común', cost: 25, description: "Flexible y resistente." },
+    [MaterialType.ORE]: { name: "Lingote de Hierro", rarity: 'Raro', cost: 50, description: "Metal refinado de alta calidad." },
+    [MaterialType.ESSENCE]: { name: "Polvo Arcano", rarity: 'Épico', cost: 150, description: "Residuo mágico brillante." },
+    [MaterialType.GEM]: { name: "Gema de Poder", rarity: 'Legendario', cost: 500, description: "Pulsante energía cristalizada." }
+};
+
+export const UPGRADE_CONFIG = {
+    MAX_LEVEL: 10,
+    BASE_COST_GOLD: 50,
+    COST_MULTIPLIER: 1.5,
+    STAT_GROWTH: 1.1 // 10% increase per level
+};
+
+// Key: ItemType -> Rarity -> Materials needed
+export const CRAFTING_RECIPES: Record<string, Record<QuestRarity, Partial<Record<MaterialType, number>>>> = {
+    [ItemType.WEAPON]: {
+        'Común': { [MaterialType.WOOD]: 3, [MaterialType.SCRAP]: 2 },
+        'Poco Común': { [MaterialType.WOOD]: 5, [MaterialType.ORE]: 2 },
+        'Raro': { [MaterialType.WOOD]: 10, [MaterialType.ORE]: 5, [MaterialType.ESSENCE]: 1 },
+        'Épico': { [MaterialType.WOOD]: 20, [MaterialType.ORE]: 10, [MaterialType.ESSENCE]: 5 },
+        'Legendario': { [MaterialType.WOOD]: 50, [MaterialType.ORE]: 25, [MaterialType.ESSENCE]: 10, [MaterialType.GEM]: 1 }
+    },
+    [ItemType.ARMOR]: {
+        'Común': { [MaterialType.SCRAP]: 5 },
+        'Poco Común': { [MaterialType.LEATHER]: 3, [MaterialType.SCRAP]: 5 },
+        'Raro': { [MaterialType.LEATHER]: 8, [MaterialType.ORE]: 2 },
+        'Épico': { [MaterialType.LEATHER]: 15, [MaterialType.ORE]: 5, [MaterialType.ESSENCE]: 3 },
+        'Legendario': { [MaterialType.LEATHER]: 30, [MaterialType.ORE]: 15, [MaterialType.ESSENCE]: 8, [MaterialType.GEM]: 1 }
+    },
+    [ItemType.HELMET]: {
+        'Común': { [MaterialType.SCRAP]: 3 },
+        'Poco Común': { [MaterialType.LEATHER]: 2, [MaterialType.SCRAP]: 3 },
+        'Raro': { [MaterialType.LEATHER]: 5, [MaterialType.ORE]: 1 },
+        'Épico': { [MaterialType.LEATHER]: 10, [MaterialType.ORE]: 3, [MaterialType.ESSENCE]: 2 },
+        'Legendario': { [MaterialType.LEATHER]: 20, [MaterialType.ORE]: 8, [MaterialType.ESSENCE]: 5, [MaterialType.GEM]: 1 }
+    },
+    [ItemType.BOOTS]: {
+        'Común': { [MaterialType.SCRAP]: 2, [MaterialType.LEATHER]: 1 },
+        'Poco Común': { [MaterialType.LEATHER]: 3, [MaterialType.SCRAP]: 2 },
+        'Raro': { [MaterialType.LEATHER]: 6, [MaterialType.ESSENCE]: 1 },
+        'Épico': { [MaterialType.LEATHER]: 12, [MaterialType.ESSENCE]: 3 },
+        'Legendario': { [MaterialType.LEATHER]: 25, [MaterialType.ESSENCE]: 8, [MaterialType.GEM]: 1 }
+    },
+    [ItemType.AMULET]: {
+        'Común': { [MaterialType.SCRAP]: 5 },
+        'Poco Común': { [MaterialType.ORE]: 2, [MaterialType.ESSENCE]: 1 },
+        'Raro': { [MaterialType.ORE]: 5, [MaterialType.ESSENCE]: 3 },
+        'Épico': { [MaterialType.ORE]: 10, [MaterialType.ESSENCE]: 8 },
+        'Legendario': { [MaterialType.ORE]: 20, [MaterialType.ESSENCE]: 15, [MaterialType.GEM]: 2 }
+    }
+};
 
 export const QUEST_TITLES_PREFIX = ['Ruinas', 'Bosque', 'Cripta', 'Torre', 'Caverna', 'Páramo', 'Ciudadela', 'Puerto', 'Laberinto', 'Abismo'];
 export const QUEST_TITLES_SUFFIX = ['Olvidadas', 'Maldito', 'del Rey', 'Oscura', 'de Hielo', 'Ardiente', 'de Sombras', 'Muerto', 'del Vacío', 'Eterno'];
@@ -151,21 +208,44 @@ export interface ItemTemplate {
 }
 
 export const ITEM_TEMPLATES: ItemTemplate[] = [
+    // Weapons - Strength
     { type: ItemType.WEAPON, subtype: 'sword', baseStat: StatType.STRENGTH, baseVal: 14, nameTemplate: "Espada" },
     { type: ItemType.WEAPON, subtype: 'axe', baseStat: StatType.STRENGTH, baseVal: 18, nameTemplate: "Hacha" },
+    { type: ItemType.WEAPON, subtype: 'mace', baseStat: StatType.STRENGTH, baseVal: 16, nameTemplate: "Maza" },
+    { type: ItemType.WEAPON, subtype: 'greatsword', baseStat: StatType.STRENGTH, baseVal: 22, nameTemplate: "Mandoble" },
+
+    // Weapons - Dexterity
     { type: ItemType.WEAPON, subtype: 'dagger', baseStat: StatType.DEXTERITY, baseVal: 10, nameTemplate: "Daga" },
     { type: ItemType.WEAPON, subtype: 'bow', baseStat: StatType.DEXTERITY, baseVal: 12, nameTemplate: "Arco" },
+    { type: ItemType.WEAPON, subtype: 'spear', baseStat: StatType.DEXTERITY, baseVal: 15, nameTemplate: "Lanza" },
+    { type: ItemType.WEAPON, subtype: 'katana', baseStat: StatType.DEXTERITY, baseVal: 16, nameTemplate: "Katana" },
+
+    // Weapons - Intelligence
     { type: ItemType.WEAPON, subtype: 'staff', baseStat: StatType.INTELLIGENCE, baseVal: 16, nameTemplate: "Bastón" },
     { type: ItemType.WEAPON, subtype: 'wand', baseStat: StatType.INTELLIGENCE, baseVal: 12, nameTemplate: "Varita" },
+    { type: ItemType.WEAPON, subtype: 'book', baseStat: StatType.INTELLIGENCE, baseVal: 10, nameTemplate: "Grimorio" },
+    { type: ItemType.WEAPON, subtype: 'orb', baseStat: StatType.INTELLIGENCE, baseVal: 14, nameTemplate: "Orbe" },
+
+    // Armor
     { type: ItemType.ARMOR, subtype: 'heavy', baseStat: StatType.CONSTITUTION, baseVal: 20, nameTemplate: "Placas" },
+    { type: ItemType.ARMOR, subtype: 'mail', baseStat: StatType.CONSTITUTION, baseVal: 16, nameTemplate: "Cota de Malla" },
     { type: ItemType.ARMOR, subtype: 'light', baseStat: StatType.DEXTERITY, baseVal: 12, nameTemplate: "Cuero" },
     { type: ItemType.ARMOR, subtype: 'robe', baseStat: StatType.INTELLIGENCE, baseVal: 10, nameTemplate: "Túnica" },
+
+    // Helmets
     { type: ItemType.HELMET, subtype: 'helm', baseStat: StatType.CONSTITUTION, baseVal: 10, nameTemplate: "Yelmo" },
     { type: ItemType.HELMET, subtype: 'hood', baseStat: StatType.DEXTERITY, baseVal: 8, nameTemplate: "Capucha" },
+    { type: ItemType.HELMET, subtype: 'crown', baseStat: StatType.INTELLIGENCE, baseVal: 8, nameTemplate: "Corona" },
+
+    // Boots
     { type: ItemType.BOOTS, subtype: 'boots', baseStat: StatType.DEXTERITY, baseVal: 6, nameTemplate: "Botas" },
     { type: ItemType.BOOTS, subtype: 'greaves', baseStat: StatType.STRENGTH, baseVal: 8, nameTemplate: "Grebas" },
+
+    // Amulets
     { type: ItemType.AMULET, subtype: 'ring', baseStat: StatType.INTELLIGENCE, baseVal: 5, nameTemplate: "Anillo" },
     { type: ItemType.AMULET, subtype: 'necklace', baseStat: StatType.CONSTITUTION, baseVal: 6, nameTemplate: "Colgante" },
+
+    // Consumables
     { type: ItemType.FOOD, subtype: 'bread', baseStat: StatType.CONSTITUTION, baseVal: 5, nameTemplate: "Pan de Viaje" },
     { type: ItemType.FOOD, subtype: 'stew', baseStat: StatType.CONSTITUTION, baseVal: 10, nameTemplate: "Guiso Espeso" },
     { type: ItemType.FOOD, subtype: 'roast', baseStat: StatType.CONSTITUTION, baseVal: 15, nameTemplate: "Asado Real" },
@@ -181,12 +261,32 @@ export const RARITY_CONFIG: Record<QuestRarity, { mult: number, probability: num
 
 export const AFFIXES = {
     PREFIXES: [
-        { name: "Pesada", stat: StatType.STRENGTH, mod: 1.1 },
-        { name: "Ágil", stat: StatType.DEXTERITY, mod: 1.1 },
-        { name: "Arcana", stat: StatType.INTELLIGENCE, mod: 1.1 },
-        { name: "Robusta", stat: StatType.CONSTITUTION, mod: 1.1 },
-        { name: "Mortal", stat: StatType.STRENGTH, mod: 1.2 },
-        { name: "Sombría", stat: StatType.DEXTERITY, mod: 1.2 },
+        // Generic High Tier
+        { name: "Divina", stat: StatType.STRENGTH, mod: 1.5, allowedTypes: [] },
+        { name: "Eterna", stat: StatType.CONSTITUTION, mod: 1.5, allowedTypes: [] },
+        { name: "Infernal", stat: StatType.INTELLIGENCE, mod: 1.5, allowedTypes: [] },
+
+        // Strength / Heavy
+        { name: "Pesada", stat: StatType.STRENGTH, mod: 1.1, allowedTypes: [ItemType.ARMOR, ItemType.WEAPON] },
+        { name: "Brutal", stat: StatType.STRENGTH, mod: 1.2, allowedTypes: [ItemType.WEAPON] },
+        { name: "Titánica", stat: StatType.STRENGTH, mod: 1.3, allowedTypes: [ItemType.ARMOR] },
+        { name: "Férrea", stat: StatType.CONSTITUTION, mod: 1.1, allowedTypes: [ItemType.ARMOR, ItemType.HELMET] },
+
+        // Dexterity / Light
+        { name: "Ágil", stat: StatType.DEXTERITY, mod: 1.1, allowedTypes: [ItemType.BOOTS, ItemType.WEAPON] },
+        { name: "Sutil", stat: StatType.DEXTERITY, mod: 1.1, allowedTypes: [ItemType.ARMOR] },
+        { name: "Veloz", stat: StatType.DEXTERITY, mod: 1.2, allowedTypes: [ItemType.BOOTS, ItemType.WEAPON] },
+        { name: "Mortal", stat: StatType.DEXTERITY, mod: 1.3, allowedTypes: [ItemType.WEAPON] },
+
+        // Intelligence / Magic
+        { name: "Arcana", stat: StatType.INTELLIGENCE, mod: 1.1, allowedTypes: [ItemType.WEAPON, ItemType.AMULET] },
+        { name: "Mística", stat: StatType.INTELLIGENCE, mod: 1.2, allowedTypes: [ItemType.HELMET, ItemType.AMULET] },
+        { name: "Etérea", stat: StatType.INTELLIGENCE, mod: 1.3, allowedTypes: [ItemType.ARMOR, ItemType.WEAPON] },
+        { name: "Sabia", stat: StatType.INTELLIGENCE, mod: 1.1, allowedTypes: [ItemType.HELMET] },
+
+        // Defense
+        { name: "Robusta", stat: StatType.CONSTITUTION, mod: 1.1, allowedTypes: [ItemType.ARMOR] },
+        { name: "Impenetrable", stat: StatType.CONSTITUTION, mod: 1.3, allowedTypes: [ItemType.ARMOR, ItemType.HELMET] },
     ],
     SUFFIXES: [
         { name: "del Oso", stat: StatType.CONSTITUTION, mod: 1.1 },
@@ -195,6 +295,14 @@ export const AFFIXES = {
         { name: "del Búho", stat: StatType.INTELLIGENCE, mod: 1.1 },
         { name: "del Dragón", stat: StatType.STRENGTH, mod: 1.3 },
         { name: "del Vacío", stat: StatType.INTELLIGENCE, mod: 1.3 },
+        { name: "de la Tormenta", stat: StatType.DEXTERITY, mod: 1.2 },
+        { name: "del Volcán", stat: StatType.STRENGTH, mod: 1.2 },
+        { name: "del Mar Profundo", stat: StatType.INTELLIGENCE, mod: 1.2 },
+        { name: "de la Montaña", stat: StatType.CONSTITUTION, mod: 1.2 },
+        { name: "del Verdugo", stat: StatType.STRENGTH, mod: 1.4 },
+        { name: "del Asesino", stat: StatType.DEXTERITY, mod: 1.4 },
+        { name: "del Archimago", stat: StatType.INTELLIGENCE, mod: 1.4 },
+        { name: "del Inmortal", stat: StatType.CONSTITUTION, mod: 1.4 },
     ]
 };
 

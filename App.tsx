@@ -12,6 +12,7 @@ import { ReportsView } from './components/Views/ReportsView';
 import { MerchantView } from './components/Views/MerchantView';
 import { WelcomeView } from './components/Views/WelcomeView';
 import { GachaView } from './components/Views/GachaView'; 
+import { ForgeView } from './components/Views/ForgeView';
 import { ToastSystem } from './components/UI/ToastSystem';
 import { TooltipSystem } from './components/UI/TooltipSystem';
 import { ActiveEventBanner } from './components/UI/ActiveEventBanner'; // New Component
@@ -224,6 +225,10 @@ export default function App() {
                             onDeductGold={actions.spendGold}
                             onDeductRubies={actions.spendRubies}
                         />
+                    )}
+
+                    {currentView === ViewState.FORGE && (
+                        <ForgeView player={player} />
                     )}
                 </div>
             </main>

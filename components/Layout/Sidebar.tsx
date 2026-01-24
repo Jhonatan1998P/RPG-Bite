@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Scroll, Swords, ShoppingBag, Shield, FileText, TrendingUp, LogOut, Download, Infinity } from 'lucide-react';
+import { User, Scroll, Swords, ShoppingBag, Shield, FileText, TrendingUp, LogOut, Download, Infinity, Hammer } from 'lucide-react';
 import { ViewState } from '../../types';
 import { TooltipTrigger } from '../UI/TooltipTrigger';
 
@@ -17,6 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onExport
     { id: ViewState.TAVERN, label: 'Taberna', icon: Scroll, desc: 'Acepta misiones para ganar recursos.' },
     { id: ViewState.ARENA, label: 'Arena', icon: Swords, desc: 'Combate contra otros guerreros.' },
     { id: ViewState.RANKINGS, label: 'Clasificación', icon: TrendingUp, desc: 'Ver el ranking de la liga.' },
+    { id: ViewState.FORGE, label: 'Herrería', icon: Hammer, desc: 'Crea, mejora y recicla equipamiento.' },
     { id: ViewState.GACHA, label: 'Altar', icon: Infinity, desc: 'Invoca Ecos del Vacío.' },
     { id: ViewState.REPORTS, label: 'Informes', icon: FileText, desc: 'Historial de tus batallas pasadas.' },
     { id: ViewState.MERCHANT, label: 'Mercader', icon: ShoppingBag, desc: 'Compra objetos y consumibles.' },
