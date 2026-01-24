@@ -11,9 +11,10 @@ import { BattleView } from './components/Views/BattleView';
 import { ReportsView } from './components/Views/ReportsView';
 import { MerchantView } from './components/Views/MerchantView';
 import { WelcomeView } from './components/Views/WelcomeView';
-import { GachaView } from './components/Views/GachaView'; // Import
+import { GachaView } from './components/Views/GachaView'; 
 import { ToastSystem } from './components/UI/ToastSystem';
 import { TooltipSystem } from './components/UI/TooltipSystem';
+import { ActiveEventBanner } from './components/UI/ActiveEventBanner'; // New Component
 import { generateBattleNarrative } from './services/geminiService';
 import { simulateCombat } from './utils/gameEngine';
 import { StorageService } from './utils/storage';
@@ -138,6 +139,11 @@ export default function App() {
         <ToastSystem />
         <TooltipSystem />
         <div className="fixed inset-0 bg-slate-900/85 pointer-events-none z-0"></div>
+
+        {/* Global Event Banner */}
+        <div className="relative z-30 shrink-0">
+             <ActiveEventBanner player={player} />
+        </div>
 
         {currentView === ViewState.BATTLE && activeBattle && (
             <BattleView 

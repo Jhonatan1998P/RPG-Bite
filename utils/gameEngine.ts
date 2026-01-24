@@ -1,5 +1,6 @@
-import { Player, Enemy, Stats, StatType, Quest, QuestRarity, Item, ItemType, BattleTurn, ArenaOpponent, CombatResult, Echo, EchoRarity, Equipment } from "../types";
-import { GAMER_ROOTS, GAMER_TAGS_PREFIX, GAMER_TAGS_SUFFIX, ENEMY_ARCHETYPES, QUEST_TITLES_PREFIX, QUEST_TITLES_SUFFIX, ITEM_TEMPLATES, RARITY_CONFIG, AFFIXES, ITEM_ASSETS, LEAGUES, League, GACHA_CONFIG, ECHO_TEMPLATES } from "../data/constants";
+
+import { Player, Enemy, Stats, StatType, Quest, QuestRarity, Item, ItemType, BattleTurn, ArenaOpponent, CombatResult, Echo, EchoRarity, Equipment, WorldEvent } from "../types";
+import { GAMER_ROOTS, GAMER_TAGS_PREFIX, GAMER_TAGS_SUFFIX, ENEMY_ARCHETYPES, QUEST_TITLES_PREFIX, QUEST_TITLES_SUFFIX, ITEM_TEMPLATES, RARITY_CONFIG, AFFIXES, ITEM_ASSETS, LEAGUES, League, GACHA_CONFIG, ECHO_TEMPLATES, LEAGUE_NAMES, GAME_EVENTS } from "../data/constants";
 
 // --- GACHA ENGINE ---
 
@@ -115,14 +116,26 @@ export const getNextLeague = (currentLeagueId: string): League | null => {
     return null;
 };
 
+// --- WORLD EVENTS HELPERS ---
+
+export const generateRandomEvent = (): WorldEvent => {
+    return GAME_EVENTS[Math.floor(Math.random() * GAME_EVENTS.length)];
+};
+
+
 // --- PROCEDURAL GENERATION ---
 
-export const generateEnemy = (level: number, difficultyMult: number = 1): Enemy => {
-    const archetype = ENEMY_ARCHETYPES[Math.floor(Math.random() * ENEMY_ARCHETYPES.length)];
-    const baseHp = 80 + (level * 20 * difficultyMult);
+export const generateEnemy = (level: number, difficultyMult: number = 1, fixedSeed?: number): Enemy => {
+    const archetypeIndex = fixedSeed !== undefined 
+        ? fixedSeed % ENEMY_ARCHETYPES.length 
+        : Math.floor(Math.random() * ENEMY_ARCHETYPES.length);
     
-    // Distribute stats based on archetype weights
-    const totalStatPoints = 15 + (level * 3);
+    const archetype = ENEMY_ARCHETYPES[archetypeIndex];
+    
+    const baseHp = 100 + (level * 25 * difficultyMult);
+    const growthCurve = Math.pow(level, 1.3);
+    const totalStatPoints = Math.floor(20 + (level * 4) + growthCurve);
+    
     const stats: Stats = {
         [StatType.STRENGTH]: Math.floor(totalStatPoints * archetype.weights[StatType.STRENGTH]),
         [StatType.DEXTERITY]: Math.floor(totalStatPoints * archetype.weights[StatType.DEXTERITY]),
@@ -130,13 +143,12 @@ export const generateEnemy = (level: number, difficultyMult: number = 1): Enemy 
         [StatType.CONSTITUTION]: Math.floor(totalStatPoints * archetype.weights[StatType.CONSTITUTION]),
     };
 
-    // Ensure no 0 stats
     for (const key in stats) {
-        if (stats[key as StatType] < 1) stats[key as StatType] = 1;
+        if (stats[key as StatType] < 5) stats[key as StatType] = 5;
     }
 
     return {
-        name: `${generateGamerTag()}`,
+        name: fixedSeed ? "Bot" : `${generateGamerTag()}`, 
         level,
         hp: baseHp,
         maxHp: baseHp,
@@ -154,59 +166,69 @@ export const calculateWinChance = (player: Player, enemy: Enemy | ArenaOpponent)
     const levelDiff = player.level - enemy.level;
     const powerRatio = pPower / Math.max(1, ePower);
     
-    // Base 50% + adjustments
     let chance = 0.5;
-    chance += (powerRatio - 1) * 0.5; 
-    chance += levelDiff * 0.02;
+    chance += (powerRatio - 1) * 0.6; 
+    chance += levelDiff * 0.01;
 
-    return Math.max(0.05, Math.min(0.95, chance));
+    return Math.max(0.01, Math.min(0.99, chance)); 
 };
 
 export const generateLeagueLadder = (leagueId: string, player: Player): ArenaOpponent[] => {
     const ladder: ArenaOpponent[] = [];
     const league = LEAGUES.find(l => l.id === leagueId) || LEAGUES[0];
+    const namePool = LEAGUE_NAMES[leagueId] || LEAGUE_NAMES['WOOD'];
     
-    for (let i = 1; i <= 50; i++) {
-        if (i === player.arenaRank) continue;
+    for (let rank = 1; rank <= 50; rank++) {
+        if (rank === player.arenaRank) continue;
 
-        const rankDifficulty = (51 - i) / 50; // 0 to 1
-        // Ranks 1-5 are significantly harder than player level usually
-        const levelVariance = Math.floor(Math.random() * 3) - 1; 
-        const level = Math.max(1, Math.floor(player.level + (rankDifficulty * 5) - 2 + levelVariance));
-
-        const enemy = generateEnemy(level, 1 + (rankDifficulty * 0.5));
+        const leagueOffset = league.rankIndex * 50;
+        const botStrengthIndex = 51 - rank; 
+        const globalRank = leagueOffset + botStrengthIndex;
+        const level = 1 + (globalRank * 2);
+        const seed = globalRank * 12345;
         
+        const enemy = generateEnemy(level, 1.0, seed);
+        const nameIndex = seed % namePool.length;
+        const suffix = rank <= 3 ? " [Elite]" : ""; 
+        enemy.name = `${namePool[nameIndex]}${suffix}`;
+
+        const goldReward = Math.floor((50 + (level * 15)) * league.rewardsMult);
+        const xpReward = Math.floor(100 + (level * 20));
+
         ladder.push({
             ...enemy,
-            id: `rival-${leagueId}-${i}`,
-            arenaRank: i,
-            winChance: 0, // Calculated dynamically in UI
-            pointsReward: 10 + Math.floor(rankDifficulty * 20),
-            goldReward: Math.floor((20 + level * 5) * league.rewardsMult)
+            id: `bot-${league.id}-${rank}`,
+            arenaRank: rank,
+            winChance: 0, 
+            pointsReward: xpReward, 
+            goldReward: goldReward
         });
     }
     return ladder;
 };
 
 export const getChallengers = (ladder: ArenaOpponent[], playerRank: number): ArenaOpponent[] => {
-    // Show opponents directly above the player to allow climbing
     const targets = [playerRank - 1, playerRank - 2, playerRank - 3, playerRank - 4, playerRank - 5];
-    // Also include top 3 for visibility if close
     if (playerRank <= 10) targets.push(1, 2, 3);
     
     return ladder.filter(opp => targets.includes(opp.arenaRank || 999)).sort((a,b) => (a.arenaRank||0) - (b.arenaRank||0)).slice(0, 5);
 };
 
-export const generateProceduralItem = (level: number): Item => {
+export const generateProceduralItem = (level: number, rarityBonus: boolean = false): Item => {
     const template = ITEM_TEMPLATES[Math.floor(Math.random() * ITEM_TEMPLATES.length)];
     
     // Rarity
     const roll = Math.random();
     let rarity: QuestRarity = 'Común';
-    if (roll < RARITY_CONFIG.Legendario.probability) rarity = 'Legendario';
-    else if (roll < RARITY_CONFIG.Legendario.probability + RARITY_CONFIG.Épico.probability) rarity = 'Épico';
-    else if (roll < 0.20) rarity = 'Raro';
-    else if (roll < 0.50) rarity = 'Poco Común';
+    
+    // LUCKY_LOOT Event Logic (+50% chance for higher rarities roughly simplified by checking higher tiers first with lower thresholds or double rolls)
+    // Simplified: If rarityBonus is true, we treat the roll as if it was better.
+    const effectiveRoll = rarityBonus ? Math.min(0.99, roll + 0.15) : roll;
+
+    if (effectiveRoll > 0.98) rarity = 'Legendario'; // Was 0.99
+    else if (effectiveRoll > 0.90) rarity = 'Épico'; // Was 0.96
+    else if (effectiveRoll > 0.70) rarity = 'Raro'; // Was 0.80
+    else if (effectiveRoll > 0.40) rarity = 'Poco Común'; // Was 0.50
 
     const config = RARITY_CONFIG[rarity];
     
@@ -219,7 +241,6 @@ export const generateProceduralItem = (level: number): Item => {
     let name = template.nameTemplate;
     const numAffixes = config.slots;
     
-    // Ensure we don't pick same prefix/suffix types multiple times ideally, but for simplicity allow overwrite/add
     for (let i = 0; i < numAffixes; i++) {
         if (Math.random() > 0.5) {
             const prefix = AFFIXES.PREFIXES[Math.floor(Math.random() * AFFIXES.PREFIXES.length)];
@@ -232,7 +253,6 @@ export const generateProceduralItem = (level: number): Item => {
         }
     }
 
-    // Image Fallback
     const assetList = ITEM_ASSETS[template.subtype] || [];
     const image = assetList.length > 0 ? assetList[Math.floor(Math.random() * assetList.length)] : "https://via.placeholder.com/150";
 
@@ -257,7 +277,6 @@ export const generateShopItems = (level: number): Item[] => {
         items.push(generateProceduralItem(level));
     }
     
-    // Always add some food
     const foodAssets = ITEM_ASSETS['bread'] || [];
     items.push({
             id: `food-${Date.now()}-${Math.random()}`,
@@ -290,7 +309,6 @@ export const generateProceduralQuest = (player: Player, seed: number): Quest => 
     const prefix = QUEST_TITLES_PREFIX[Math.floor(Math.random() * QUEST_TITLES_PREFIX.length)];
     const suffix = QUEST_TITLES_SUFFIX[Math.floor(Math.random() * QUEST_TITLES_SUFFIX.length)];
     
-    // Rarity
     const roll = Math.random();
     let rarity: QuestRarity = 'Común';
     if (roll > 0.95) rarity = 'Legendario';
@@ -337,11 +355,10 @@ export const simulateCombat = (player: Player, enemy: Enemy | ArenaOpponent): Co
     const pStats = calculatePlayerTotalStats(player);
     let round = 1;
 
-    // Echo Effects
     const pDmgMod = player.equippedEcho?.rarity === 'Ascendido' ? 1.2 : 1.0; 
     const pCritMod = player.equippedEcho?.rarity === 'Luminoso' ? 0.1 : 0.0;
+    const pLifeSteal = player.equippedEcho?.id === 'echo_lich' ? 0.05 : 0; 
 
-    // Simple Turn Based System
     while (pHP > 0 && eHP > 0 && round < 30) {
         // Player Turn
         const pHit = Math.random() + (pStats[StatType.DEXTERITY] * 0.005);
@@ -350,15 +367,18 @@ export const simulateCombat = (player: Player, enemy: Enemy | ArenaOpponent): Co
         let pDmg = 0;
         let pMiss = false;
         
-        // Basic Hit Chance check (simplified)
-        if (pHit > 0.15) {
+        const hitThreshold = 0.2; 
+        
+        if (pHit > hitThreshold) {
             const rawDmg = (pStats[StatType.STRENGTH] * 0.6) + (pStats[StatType.INTELLIGENCE] * 0.4) + (Math.random() * 5);
             pDmg = Math.max(1, rawDmg * (pCrit ? 2 : 1) * pDmgMod);
-            // Mitigation
             const mitigation = enemy.stats[StatType.CONSTITUTION] * 0.3;
             pDmg = Math.max(1, pDmg - mitigation);
             
             eHP -= pDmg;
+
+            if (pLifeSteal > 0) pHP = Math.min(player.maxHp, pHP + (pDmg * pLifeSteal));
+
         } else {
             pMiss = true;
         }
@@ -381,7 +401,7 @@ export const simulateCombat = (player: Player, enemy: Enemy | ArenaOpponent): Co
         let eDmg = 0;
         let eMiss = false;
 
-        if (eHit > 0.15 + (pStats[StatType.DEXTERITY]*0.002)) { 
+        if (eHit > hitThreshold + (pStats[StatType.DEXTERITY]*0.002)) { 
             const rawDmg = (enemy.stats[StatType.STRENGTH] * 0.6) + (enemy.stats[StatType.INTELLIGENCE] * 0.4) + (Math.random() * 5);
             eDmg = Math.max(1, rawDmg * (eCrit ? 2 : 1));
             const mitigation = pStats[StatType.CONSTITUTION] * 0.3;

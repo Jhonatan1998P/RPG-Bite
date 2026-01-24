@@ -82,7 +82,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ player, ladder }) =>
   };
 
   return (
-    <div className="flex flex-col h-full pb-8 animate-fade-in gap-6">
+    <div className="flex flex-col gap-6 animate-fade-in pb-20 md:pb-6">
         <div className="glass-panel p-6 rounded-2xl border border-white/5 flex items-center justify-between bg-slate-900/40">
             <div>
                 <h2 className="font-serif text-2xl md:text-3xl text-slate-200 flex items-center gap-3">
@@ -98,14 +98,14 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ player, ladder }) =>
             </div>
         </div>
 
-        <div className="flex-grow min-h-0 bg-slate-950/30 rounded-2xl border border-white/5 overflow-hidden flex flex-col">
+        <div className="bg-slate-950/30 rounded-2xl border border-white/5 overflow-hidden flex flex-col">
             <div className="p-3 bg-black/20 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-500 flex justify-between px-6">
                 <span>Rango</span>
                 <span>Gladiador</span>
                 <span>Poder</span>
             </div>
             
-            <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar">
+            <div className="p-4 space-y-2">
                 {Array.from({ length: 50 }, (_, i) => i + 1).map(rank => renderRow(rank))}
             </div>
         </div>

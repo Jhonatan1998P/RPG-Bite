@@ -158,7 +158,7 @@ export const ArenaView: React.FC<ArenaViewProps> = ({ player, ladder, onStartBat
   }, [player.nextArenaBattle]);
 
   return (
-    <div className="flex flex-col h-full gap-4 animate-fade-in pb-2 overflow-hidden">
+    <div className="flex flex-col gap-4 animate-fade-in pb-20 md:pb-6">
       
       {/* 1. HEADER */}
       <ViewHeader 
@@ -232,9 +232,9 @@ export const ArenaView: React.FC<ArenaViewProps> = ({ player, ladder, onStartBat
       </div>
 
       {/* 3. CHALLENGERS GRID */}
-      <div className="flex-grow min-h-0 overflow-y-auto custom-scrollbar pr-1 md:pr-2">
+      <div>
           {challengers.length === 0 ? (
-               <div className="h-full flex flex-col items-center justify-center p-12 bg-slate-900/30 rounded-xl border border-dashed border-white/10 animate-fade-in">
+               <div className="h-64 flex flex-col items-center justify-center p-12 bg-slate-900/30 rounded-xl border border-dashed border-white/10 animate-fade-in">
                    <Crown className="w-16 h-16 text-gold-500 mb-6 animate-bounce shadow-gold-glow" />
                    <h3 className="text-2xl font-serif text-gold-400 mb-2">¡Eres el Campeón!</h3>
                    <p className="text-slate-400 text-sm max-w-md text-center leading-relaxed">

@@ -204,10 +204,10 @@ const InventorySlot: React.FC<{
 // Extracted Component: HeroStatsSection
 const HeroStatsSection: React.FC<HeroStatsSectionProps> = ({ player, totalStats, onTrainStat }) => {
     return (
-      <div className="flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-1">
+      <div className="flex flex-col gap-4">
           {/* Avatar Card */}
           <div className="shrink-0 relative rounded-2xl overflow-hidden border border-white/10 group shadow-2xl">
-              <div className="aspect-[16/9] md:aspect-[4/3] relative">
+              <div className="aspect-[16/9] md:aspect-[21/9] lg:aspect-[16/9] relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10"></div>
                   <img 
                       src="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=800&auto=format&fit=crop" 
@@ -256,7 +256,7 @@ const HeroStatsSection: React.FC<HeroStatsSectionProps> = ({ player, totalStats,
 
           {/* Attribute Training */}
           <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between px-1 mb-1">
+              <div className="flex items-center justify-between px-1 mb-1 mt-2">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                       <BicepsFlexed className="w-3 h-3" /> Entrenamiento
                   </h3>
@@ -337,9 +337,9 @@ const GearSection: React.FC<GearSectionProps> = ({ player, onEquipItem, onUnequi
     );
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col gap-6">
           {/* Equipment Slots (Paperdoll) */}
-          <div className="shrink-0 mb-4">
+          <div className="shrink-0">
               <div className="flex items-center gap-2 mb-3 px-1">
                   <Shield className="w-4 h-4 text-gold-500" />
                   <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Equipo Actual</h3>
@@ -377,7 +377,7 @@ const GearSection: React.FC<GearSectionProps> = ({ player, onEquipItem, onUnequi
           </div>
 
           {/* Inventory Grid */}
-          <div className="flex-grow flex flex-col min-h-0 bg-slate-900/40 rounded-2xl border border-white/5 overflow-hidden">
+          <div className="flex flex-col bg-slate-900/40 rounded-2xl border border-white/5 overflow-hidden">
               <div className="shrink-0 p-4 border-b border-white/5 flex justify-between items-center bg-black/20">
                   <div className="flex items-center gap-2">
                       <Backpack className="w-4 h-4 text-gold-500" />
@@ -390,7 +390,7 @@ const GearSection: React.FC<GearSectionProps> = ({ player, onEquipItem, onUnequi
                   </TooltipTrigger>
               </div>
               
-              <div className="flex-grow overflow-y-auto p-3 custom-scrollbar">
+              <div className="p-3">
                   <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
                       {player.inventory.map((item) => (
                           <InventorySlot 
@@ -420,10 +420,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
   const totalStats = useMemo(() => calculatePlayerTotalStats(player), [player.stats, player.equipment, player.equippedEcho]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden animate-fade-in pb-2">
+    <div className="flex flex-col gap-6 animate-fade-in pb-20 md:pb-6">
       
       {/* 1. TOP HEADER (Wealth) */}
-      <div className="shrink-0 grid grid-cols-3 gap-3 mb-4">
+      <div className="shrink-0 grid grid-cols-3 gap-3">
          <TooltipTrigger content="Oro. Moneda común utilizada para entrenar atributos y comprar equipo básico en el Mercader.">
              <div className="bg-slate-900/80 border border-gold-500/20 p-2 md:p-3 rounded-xl flex items-center justify-between shadow-lg cursor-help">
                 <div className="min-w-0">
@@ -456,7 +456,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
       </div>
 
       {/* 2. MOBILE TABS TOGGLE (Visible only on mobile) */}
-      <div className="md:hidden shrink-0 flex p-1 bg-slate-900 rounded-xl border border-white/5 mb-4">
+      <div className="md:hidden shrink-0 flex p-1 bg-slate-900 rounded-xl border border-white/5">
           <button 
             onClick={() => setActiveTab('HERO')}
             className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'HERO' ? 'bg-slate-800 text-gold-400 shadow-md' : 'text-slate-500'}`}
@@ -472,10 +472,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
       </div>
 
       {/* 3. MAIN CONTENT AREA (Split on Desktop, Swapped on Mobile) */}
-      <div className="flex-grow min-h-0 md:grid md:grid-cols-12 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
           
           {/* LEFT PANEL: HERO STATS */}
-          <div className={`md:col-span-5 lg:col-span-4 h-full min-h-0 ${activeTab === 'HERO' ? 'block' : 'hidden md:block'}`}>
+          <div className={`md:col-span-5 lg:col-span-4 ${activeTab === 'HERO' ? 'block' : 'hidden md:block'}`}>
               <HeroStatsSection 
                   player={player} 
                   totalStats={totalStats} 
@@ -484,7 +484,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
           </div>
 
           {/* RIGHT PANEL: GEAR & INVENTORY */}
-          <div className={`md:col-span-7 lg:col-span-8 h-full min-h-0 ${activeTab === 'GEAR' ? 'block' : 'hidden md:block'}`}>
+          <div className={`md:col-span-7 lg:col-span-8 ${activeTab === 'GEAR' ? 'block' : 'hidden md:block'}`}>
               <GearSection 
                   player={player} 
                   onEquipItem={onEquipItem} 

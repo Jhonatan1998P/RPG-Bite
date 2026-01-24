@@ -1,8 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Player, StatType, Item, ItemType, Equipment, Quest, BattleLog, ArenaOpponent, Echo } from '../types';
+import { Player, StatType, Item, ItemType, Equipment, Quest, BattleLog, ArenaOpponent, Echo, EventType } from '../types';
 import { StorageService } from '../utils/storage';
-import { calculatePlayerTotalStats, calculateStatCost, calculateFoodHealing, calculateQuestSuccessChance, checkLevelUp, generateLeagueLadder, generateProceduralQuest, calculateMaxXp, getNextLeague, generateShopItems, summonEcho } from '../utils/gameEngine';
+import { calculatePlayerTotalStats, calculateStatCost, calculateFoodHealing, calculateQuestSuccessChance, checkLevelUp, generateLeagueLadder, generateProceduralQuest, calculateMaxXp, getNextLeague, generateShopItems, summonEcho, generateRandomEvent, generateProceduralItem } from '../utils/gameEngine';
 import { generateQuestResult } from '../services/geminiService';
 import { eventBus, EventTypes } from '../services/eventBus';
 import { GACHA_CONFIG } from '../data/constants';
@@ -15,7 +15,7 @@ const INITIAL_PLAYER: Player = {
   hp: 100,
   maxHp: 100,
   gold: 300,
-  rubies: 100, // Increased starting rubies to try gacha
+  rubies: 100,
   voidDust: 0,
   energy: 50,
   maxEnergy: 50,
@@ -35,17 +35,22 @@ const INITIAL_PLAYER: Player = {
       [ItemType.AMULET]: null
   },
   
-  // New Gacha State
+  // Gacha State
   echoesInventory: [],
   equippedEcho: null,
   pityCounter: 0,
   lastDailySummon: 0,
 
+  // Event State
+  activeEvent: null,
+  eventEndTime: 0,
+  nextEventCheck: 0,
+
   currentQuests: [],
   nextArenaBattle: 0,
   nextTavernRefresh: 0,
   arenaRank: 50, 
-  arenaLeague: 'INITIATE',
+  arenaLeague: 'WOOD', // Fixed init to wood
   arenaLadder: [],
   merchantInventory: [],
   nextMerchantRefresh: 0
@@ -55,7 +60,7 @@ export const useGameState = () => {
   const [player, setPlayer] = useState<Player>(INITIAL_PLAYER);
   const [gameStarted, setGameStarted] = useState(false);
 
-  // --- PERSISTENCE & INIT ---
+  // --- PERSISTENCE & GAME LOOP ---
   useEffect(() => {
     if (gameStarted) {
       StorageService.save(player);
@@ -66,15 +71,44 @@ export const useGameState = () => {
     if (!gameStarted) return;
     const interval = setInterval(() => {
         setPlayer(p => {
+             const now = Date.now();
+             
+             // 1. HP Regen
              const hpRegen = Math.max(1, Math.ceil(p.maxHp * 0.02));
+             
+             // 2. Merchant Logic
              let newMerchantInv = p.merchantInventory;
              let newMerchantTimer = p.nextMerchantRefresh;
-             
-             if (Date.now() > p.nextMerchantRefresh) {
+             if (now > p.nextMerchantRefresh) {
                  newMerchantInv = generateShopItems(p.level);
-                 newMerchantTimer = Date.now() + (2 * 60 * 60 * 1000); 
+                 newMerchantTimer = now + (2 * 60 * 60 * 1000); 
                  if (p.nextMerchantRefresh !== 0) {
                     eventBus.emit(EventTypes.SHOW_TOAST, { message: "Mercado actualizado.", type: 'info' });
+                 }
+             }
+
+             // 3. World Event Logic
+             let activeEvent = p.activeEvent;
+             let eventEndTime = p.eventEndTime;
+             let nextEventCheck = p.nextEventCheck;
+
+             // Check for Event Expiration
+             if (activeEvent && now > eventEndTime) {
+                 eventBus.emit(EventTypes.SHOW_TOAST, { message: `El evento ${activeEvent.name} ha terminado.`, type: 'info' });
+                 activeEvent = null;
+                 nextEventCheck = now + (Math.random() * 15 + 15) * 60 * 1000; // Cooldown 15-30 mins
+             }
+
+             // Check for New Event Spawn
+             if (!activeEvent && now > nextEventCheck) {
+                 // 40% chance to spawn an event every check
+                 if (Math.random() < 0.4) {
+                     const newEvent = generateRandomEvent();
+                     activeEvent = newEvent;
+                     eventEndTime = now + newEvent.duration;
+                     eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Evento Global: ${newEvent.name}!`, type: 'success', duration: 5000 });
+                 } else {
+                     nextEventCheck = now + 5 * 60 * 1000; // Check again in 5 mins
                  }
              }
 
@@ -83,11 +117,15 @@ export const useGameState = () => {
                 hp: Math.min(p.maxHp, p.hp + hpRegen), 
                 energy: Math.min(p.maxEnergy, p.energy + 1),
                 merchantInventory: newMerchantInv,
-                nextMerchantRefresh: newMerchantTimer
+                nextMerchantRefresh: newMerchantTimer,
+                activeEvent,
+                eventEndTime,
+                nextEventCheck
              }
         });
-    }, 60000); 
+    }, 60000); // Loop every minute
     
+    // Initial Merchant Load
     setPlayer(prev => {
         if (prev.merchantInventory.length === 0 || Date.now() > prev.nextMerchantRefresh) {
              return {
@@ -98,10 +136,11 @@ export const useGameState = () => {
         }
         return prev;
     });
+
     return () => clearInterval(interval);
   }, [gameStarted]);
 
-  // Recalculate MaxHP on stat changes
+  // Recalculate MaxHP
   useEffect(() => {
       if (!gameStarted) return;
       setPlayer(prev => {
@@ -150,7 +189,13 @@ export const useGameState = () => {
   };
 
   const trainStat = (stat: StatType) => {
-      const cost = calculateStatCost(player.stats[stat]);
+      let cost = calculateStatCost(player.stats[stat]);
+      
+      // EVENT: Discount
+      if (player.activeEvent?.type === EventType.DISCOUNT) {
+          cost = Math.floor(cost * player.activeEvent.multiplier);
+      }
+
       if (player.gold >= cost) {
           setPlayer(prev => ({
               ...prev,
@@ -245,10 +290,9 @@ export const useGameState = () => {
       const count = isMulti ? 10 : 1;
       let cost = 0;
       
-      if (currency === 'RUBY') cost = count * (isMulti ? 90 : 100); // 10% discount on multi
+      if (currency === 'RUBY') cost = count * (isMulti ? 90 : 100); 
       if (currency === 'DUST') cost = count * GACHA_CONFIG.COST_DUST;
 
-      // Check Currency
       if (currency === 'RUBY' && player.rubies < cost) {
           eventBus.emit(EventTypes.SHOW_TOAST, { message: "Faltan Rubíes.", type: 'error' });
           return null;
@@ -295,7 +339,6 @@ export const useGameState = () => {
   };
 
   const burnEcho = (echo: Echo) => {
-      // Cannot burn equipped
       if (player.equippedEcho?.id === echo.id) {
           eventBus.emit(EventTypes.SHOW_TOAST, { message: "No puedes sacrificar el eco equipado.", type: 'error' });
           return;
@@ -335,19 +378,42 @@ export const useGameState = () => {
 
       if (isSuccess) {
           setPlayer(prev => {
-              const newXp = prev.xp + quest.xpReward;
+              // Apply Event Multipliers
+              let finalXpReward = quest.xpReward;
+              let finalGoldReward = quest.goldReward;
+              
+              if (prev.activeEvent?.type === EventType.XP_BOOST) finalXpReward = Math.floor(finalXpReward * prev.activeEvent.multiplier);
+              if (prev.activeEvent?.type === EventType.GOLD_RUSH) finalGoldReward = Math.floor(finalGoldReward * prev.activeEvent.multiplier);
+
+              const newXp = prev.xp + finalXpReward;
               const levelCheck = checkLevelUp(newXp, prev.maxXp, prev.level);
               if (levelCheck.leveledUp) eventBus.emit(EventTypes.SHOW_TOAST, { message: "¡SUBIDA DE NIVEL!", type: 'success' });
               
+              // Event: Ruby Hunt
+              let rubyBonus = 0;
+              if (prev.activeEvent?.type === EventType.RUBY_HUNT && Math.random() < prev.activeEvent.multiplier) {
+                  rubyBonus = 1;
+                  eventBus.emit(EventTypes.SHOW_TOAST, { message: "¡La Luna de Sangre te otorga 1 Rubí!", type: 'success', duration: 4000 });
+              }
+
               const updatedInv = [...prev.inventory];
+              // Event: Lucky Loot logic for procedural drops is handled in generation, 
+              // but if itemReward is fixed in quest, we can't change it here easily.
+              // We just respect the existing reward if any.
               if (quest.itemReward && updatedInv.length < 20) {
                   updatedInv.push(quest.itemReward);
                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Obtuviste ${quest.itemReward.name}!`, type: 'success' });
+              } else if (prev.activeEvent?.type === EventType.LUCKY_LOOT && Math.random() < 0.2 && updatedInv.length < 20) {
+                  // Lucky Loot Bonus Chance for random item on generic success
+                   const bonusItem = generateProceduralItem(prev.level, true);
+                   updatedInv.push(bonusItem);
+                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Fortuna Divina! Encontraste ${bonusItem.name}`, type: 'success' });
               }
 
               return {
                   ...prev,
-                  gold: prev.gold + quest.goldReward,
+                  gold: prev.gold + finalGoldReward,
+                  rubies: prev.rubies + rubyBonus,
                   xp: levelCheck.remainingXp,
                   level: levelCheck.newLevel,
                   maxXp: levelCheck.newMaxXp,
@@ -375,38 +441,59 @@ export const useGameState = () => {
 
   const processBattleResult = (log: BattleLog, opponentRank: number) => {
       setPlayer(prev => {
-          const newXp = prev.xp + log.xpChange;
+          let finalXpReward = log.xpChange;
+          let finalGoldReward = log.goldChange;
+
+          // Apply Event Multipliers
+          if (prev.activeEvent?.type === EventType.XP_BOOST) finalXpReward = Math.floor(finalXpReward * prev.activeEvent.multiplier);
+          if (prev.activeEvent?.type === EventType.GOLD_RUSH) finalGoldReward = Math.floor(finalGoldReward * prev.activeEvent.multiplier);
+
+          const newXp = prev.xp + finalXpReward;
           const levelCheck = checkLevelUp(newXp, prev.maxXp, prev.level);
           const finalHp = log.turns[log.turns.length - 1].playerHp;
           
           let newRank = prev.arenaRank;
           let newLadder = [...prev.arenaLadder];
           let newLeague = prev.arenaLeague;
+          let rubyBonus = 0;
 
-          if (log.result === 'VICTORIA' && opponentRank < prev.arenaRank) {
-              newRank = opponentRank;
-              // Ladder Swap Logic
-              newLadder = newLadder.map(bot => 
-                  bot.arenaRank === opponentRank ? { ...bot, arenaRank: prev.arenaRank } : bot
-              ).sort((a,b) => (a.arenaRank||50) - (b.arenaRank||50));
-              
-              eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Rango #${newRank} alcanzado!`, type: 'success' });
-              
-              // League Promotion
-              if (newRank === 1) {
-                  const nextLeague = getNextLeague(prev.arenaLeague);
-                  if (nextLeague) {
-                      newLeague = nextLeague.id;
-                      newRank = 50;
-                      newLadder = []; // Will regenerate in effect
-                      eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Ascendido a ${nextLeague.name}!`, type: 'success', duration: 5000 });
+          if (log.result === 'VICTORIA') {
+             // Event: Ruby Hunt
+              if (prev.activeEvent?.type === EventType.RUBY_HUNT && Math.random() < prev.activeEvent.multiplier) {
+                  rubyBonus = 1;
+                  eventBus.emit(EventTypes.SHOW_TOAST, { message: "¡La Luna de Sangre te otorga 1 Rubí!", type: 'success', duration: 4000 });
+              }
+
+              if (opponentRank < prev.arenaRank) {
+                  newRank = opponentRank;
+                  newLadder = newLadder.map(bot => 
+                      bot.arenaRank === opponentRank ? { ...bot, arenaRank: prev.arenaRank } : bot
+                  ).sort((a,b) => (a.arenaRank||50) - (b.arenaRank||50));
+                  
+                  eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Rango #${newRank} alcanzado!`, type: 'success' });
+                  
+                  if (newRank === 1) {
+                      const nextLeague = getNextLeague(prev.arenaLeague);
+                      if (nextLeague) {
+                          newLeague = nextLeague.id;
+                          newRank = 50;
+                          newLadder = []; 
+                          eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Ascendido a ${nextLeague.name}!`, type: 'success', duration: 5000 });
+                      }
                   }
               }
+          }
+          
+          // Event: Speed
+          let cooldown = 150000; // 2.5 mins default
+          if (prev.activeEvent?.type === EventType.SPEED) {
+              cooldown = Math.floor(cooldown * prev.activeEvent.multiplier);
           }
 
           return {
               ...prev,
-              gold: prev.gold + log.goldChange,
+              gold: prev.gold + finalGoldReward,
+              rubies: prev.rubies + rubyBonus,
               xp: levelCheck.remainingXp,
               level: levelCheck.newLevel,
               maxXp: levelCheck.newMaxXp,
@@ -416,11 +503,11 @@ export const useGameState = () => {
                   [StatType.CONSTITUTION]: prev.stats[StatType.CONSTITUTION] + 1 
               } : prev.stats,
               hp: Math.max(1, finalHp),
-              battleHistory: [...prev.battleHistory, log],
+              battleHistory: [...prev.battleHistory, { ...log, goldChange: finalGoldReward, xpChange: finalXpReward }],
               arenaRank: newRank,
               arenaLeague: newLeague,
               arenaLadder: newLadder,
-              nextArenaBattle: Date.now() + 150000 // Cooldown handled here
+              nextArenaBattle: Date.now() + cooldown 
           };
       });
   };
@@ -451,7 +538,17 @@ export const useGameState = () => {
   };
 
   const updateQuests = (quests: Quest[]) => setPlayer(prev => ({ ...prev, currentQuests: quests }));
-  const refreshTavernTimer = () => setPlayer(prev => ({ ...prev, nextTavernRefresh: Date.now() + 300000 }));
+  
+  const refreshTavernTimer = () => {
+       setPlayer(prev => {
+           let cooldown = 300000; // 5 mins
+           if (prev.activeEvent?.type === EventType.SPEED) {
+               cooldown = Math.floor(cooldown * prev.activeEvent.multiplier);
+           }
+           return { ...prev, nextTavernRefresh: Date.now() + cooldown };
+       });
+  }
+
   const refreshSingleQuest = (questId: string) => {
       if (player.rubies >= 1) {
           setPlayer(prev => {
@@ -477,7 +574,7 @@ export const useGameState = () => {
         startGame,
         loadGame,
         importGame,
-        setGameStarted, // For exit
+        setGameStarted, 
         trainStat,
         equipItem,
         unequipItem,
@@ -492,7 +589,6 @@ export const useGameState = () => {
         updateQuests,
         refreshTavernTimer,
         refreshSingleQuest,
-        // Gacha Actions
         performSummon,
         equipEcho,
         burnEcho
