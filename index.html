@@ -1,122 +1,13 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Shadowbound</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              serif: ['Cinzel', 'serif'],
-            },
-            colors: {
-              obsidian: '#0f172a',
-              void: '#020617',
-              gold: {
-                400: '#facc15',
-                500: '#eab308',
-                600: '#ca8a04',
-              },
-              blood: {
-                500: '#ef4444',
-                900: '#7f1d1d',
-              },
-              magic: {
-                500: '#a855f7',
-                900: '#581c87',
-              }
-            },
-            backgroundImage: {
-              'dark-pattern': "url('https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=2544&auto=format&fit=crop')",
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.5s ease-out',
-              'fade-in-up': 'fadeInUp 0.5s ease-out',
-              'slide-up': 'slideUp 0.3s ease-out',
-              'scale-in': 'scaleIn 0.3s ease-out',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              slideUp: {
-                '0%': { transform: 'translateY(100%)' },
-                '100%': { transform: 'translateY(0)' },
-              },
-              scaleIn: {
-                '0%': { opacity: '0', transform: 'scale(0.9)' },
-                '100%': { opacity: '1', transform: 'scale(1)' },
-              }
-            }
-          }
-        }
-      }
-    </script>
-    <style>
-      body {
-        background-color: #020617;
-        color: #e2e8f0;
-        -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-y: none; /* Previene el rebote en iOS/Android */
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: rgba(15, 23, 42, 0.5); 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
-      .glass-panel {
-        background: rgba(15, 23, 42, 0.65);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-      }
-      .glass-panel-hover:hover {
-        background: rgba(30, 41, 59, 0.75);
-        border-color: rgba(255, 255, 255, 0.15);
-      }
-      .text-shadow {
-        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-      }
-      .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
