@@ -1,11 +1,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Player, StatType, Item, ItemType, Equipment, Quest, BattleLog, ArenaOpponent, Echo, EventType } from '../types';
+import { Player, StatType, Item, ItemType, Equipment, Quest, BattleLog, ArenaOpponent, Echo, EventType, MaterialType, QuestRarity } from '../types';
 import { StorageService } from '../utils/storage';
-import { calculatePlayerTotalStats, calculateStatCost, calculateFoodHealing, calculateQuestSuccessChance, checkLevelUp, generateLeagueLadder, generateProceduralQuest, calculateMaxXp, getNextLeague, generateShopItems, summonEcho, generateRandomEvent, generateProceduralItem } from '../utils/gameEngine';
+import { calculatePlayerTotalStats, calculateStatCost, calculateFoodHealing, calculateQuestSuccessChance, checkLevelUp, generateLeagueLadder, generateProceduralQuest, calculateMaxXp, getNextLeague, generateShopItems, summonEcho, generateRandomEvent, generateProceduralItem, salvageItem as engineSalvage, upgradeItem as engineUpgrade } from '../utils/gameEngine';
 import { generateQuestResult } from '../services/geminiService';
 import { eventBus, EventTypes } from '../services/eventBus';
-import { GACHA_CONFIG } from '../data/constants';
+import { GACHA_CONFIG, CRAFTING_RECIPES, UPGRADE_CONFIG, MATERIALS_CONFIG } from '../data/constants';
 
 const INITIAL_PLAYER: Player = {
   name: 'Viajero',
@@ -53,7 +53,17 @@ const INITIAL_PLAYER: Player = {
   arenaLeague: 'WOOD', // Fixed init to wood
   arenaLadder: [],
   merchantInventory: [],
-  nextMerchantRefresh: 0
+  nextMerchantRefresh: 0,
+
+  // Crafting State
+  materials: {
+      [MaterialType.SCRAP]: 0,
+      [MaterialType.WOOD]: 0,
+      [MaterialType.ORE]: 0,
+      [MaterialType.LEATHER]: 0,
+      [MaterialType.ESSENCE]: 0,
+      [MaterialType.GEM]: 0
+  }
 };
 
 export const useGameState = () => {
@@ -397,17 +407,22 @@ export const useGameState = () => {
               }
 
               const updatedInv = [...prev.inventory];
-              // Event: Lucky Loot logic for procedural drops is handled in generation, 
-              // but if itemReward is fixed in quest, we can't change it here easily.
-              // We just respect the existing reward if any.
+              const updatedMaterials = { ...prev.materials };
+
+              // Item Reward
               if (quest.itemReward && updatedInv.length < 20) {
                   updatedInv.push(quest.itemReward);
                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Obtuviste ${quest.itemReward.name}!`, type: 'success' });
               } else if (prev.activeEvent?.type === EventType.LUCKY_LOOT && Math.random() < 0.2 && updatedInv.length < 20) {
-                  // Lucky Loot Bonus Chance for random item on generic success
                    const bonusItem = generateProceduralItem(prev.level, true);
                    updatedInv.push(bonusItem);
                    eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Fortuna Divina! Encontraste ${bonusItem.name}`, type: 'success' });
+              }
+
+              // Material Reward
+              if (quest.materialReward) {
+                  updatedMaterials[quest.materialReward.type] = (updatedMaterials[quest.materialReward.type] || 0) + quest.materialReward.amount;
+                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `Material: +${quest.materialReward.amount} ${MATERIALS_CONFIG[quest.materialReward.type].name}`, type: 'success' });
               }
 
               return {
@@ -424,7 +439,8 @@ export const useGameState = () => {
                   } : prev.stats,
                   hp: levelCheck.leveledUp ? prev.maxHp : prev.hp,
                   energy: levelCheck.leveledUp ? prev.maxEnergy : prev.energy,
-                  inventory: updatedInv
+                  inventory: updatedInv,
+                  materials: updatedMaterials
               };
           });
       } else {
@@ -457,11 +473,26 @@ export const useGameState = () => {
           let newLeague = prev.arenaLeague;
           let rubyBonus = 0;
 
+          let updatedInv = [...prev.inventory];
+          let updatedMaterials = { ...prev.materials };
+
           if (log.result === 'VICTORIA') {
              // Event: Ruby Hunt
               if (prev.activeEvent?.type === EventType.RUBY_HUNT && Math.random() < prev.activeEvent.multiplier) {
                   rubyBonus = 1;
                   eventBus.emit(EventTypes.SHOW_TOAST, { message: "¡La Luna de Sangre te otorga 1 Rubí!", type: 'success', duration: 4000 });
+              }
+
+              // Handle Loot
+              if (log.loot) {
+                  if (log.loot.item && updatedInv.length < 20) {
+                       updatedInv.push(log.loot.item);
+                       eventBus.emit(EventTypes.SHOW_TOAST, { message: `Botín: ${log.loot.item.name}`, type: 'success' });
+                  }
+                  if (log.loot.material) {
+                      updatedMaterials[log.loot.material.type] += log.loot.material.amount;
+                      eventBus.emit(EventTypes.SHOW_TOAST, { message: `Botín: +${log.loot.material.amount} ${MATERIALS_CONFIG[log.loot.material.type].name}`, type: 'success' });
+                  }
               }
 
               if (opponentRank < prev.arenaRank) {
@@ -507,7 +538,9 @@ export const useGameState = () => {
               arenaRank: newRank,
               arenaLeague: newLeague,
               arenaLadder: newLadder,
-              nextArenaBattle: Date.now() + cooldown 
+              nextArenaBattle: Date.now() + cooldown,
+              inventory: updatedInv,
+              materials: updatedMaterials
           };
       });
   };
@@ -567,6 +600,97 @@ export const useGameState = () => {
       }
   };
 
+  // --- CRAFTING ACTIONS ---
+
+  const craftItem = (type: ItemType, rarity: QuestRarity) => {
+      if (player.inventory.length >= 20) {
+           eventBus.emit(EventTypes.SHOW_TOAST, { message: "Inventario lleno.", type: 'error' });
+           return;
+      }
+
+      const recipe = CRAFTING_RECIPES[type]?.[rarity];
+      if (!recipe) return;
+
+      // Check materials
+      const missing = Object.entries(recipe).find(([mat, amount]) => (player.materials[mat as MaterialType] || 0) < (amount as number));
+      if (missing) {
+          eventBus.emit(EventTypes.SHOW_TOAST, { message: "Faltan materiales.", type: 'error' });
+          return;
+      }
+
+      const newItem = generateProceduralItem(player.level, false, rarity, type);
+
+      setPlayer(prev => {
+          const newMaterials = { ...prev.materials };
+          Object.entries(recipe).forEach(([mat, amount]) => {
+               newMaterials[mat as MaterialType] -= (amount as number);
+          });
+
+          return {
+              ...prev,
+              materials: newMaterials,
+              inventory: [...prev.inventory, newItem]
+          };
+      });
+
+      eventBus.emit(EventTypes.SHOW_TOAST, { message: `Creado: ${newItem.name}`, type: 'success' });
+  };
+
+  const salvageItem = (item: Item) => {
+      if (player.equippedEcho?.id === item.id) return; // Basic safety, though not needed for items
+
+      const materials = engineSalvage(item);
+      setPlayer(prev => {
+          const newMaterials = { ...prev.materials };
+          materials.forEach(m => {
+              newMaterials[m.type] += m.amount;
+          });
+
+          return {
+              ...prev,
+              materials: newMaterials,
+              inventory: prev.inventory.filter(i => i.id !== item.id)
+          };
+      });
+
+      const matSummary = materials.map(m => `+${m.amount} ${MATERIALS_CONFIG[m.type].name}`).join(', ');
+      eventBus.emit(EventTypes.SHOW_TOAST, { message: `Reciclado: ${matSummary}`, type: 'success' });
+  };
+
+  const upgradeItem = (item: Item) => {
+      const currentLevel = item.upgradeLevel || 0;
+      if (currentLevel >= UPGRADE_CONFIG.MAX_LEVEL) {
+          eventBus.emit(EventTypes.SHOW_TOAST, { message: "Nivel máximo alcanzado.", type: 'error' });
+          return;
+      }
+
+      const cost = Math.floor(UPGRADE_CONFIG.BASE_COST_GOLD * Math.pow(UPGRADE_CONFIG.COST_MULTIPLIER, currentLevel));
+      if (player.gold < cost) {
+          eventBus.emit(EventTypes.SHOW_TOAST, { message: `Necesitas ${cost} de oro.`, type: 'error' });
+          return;
+      }
+
+      const upgradedItem = engineUpgrade(item);
+
+      setPlayer(prev => {
+           let updatedInventory = prev.inventory.map(i => i.id === item.id ? upgradedItem : i);
+           let updatedEquipment = { ...prev.equipment };
+
+           if (prev.equipment[item.type as keyof Equipment]?.id === item.id) {
+               updatedEquipment[item.type as keyof Equipment] = upgradedItem;
+           }
+
+           return {
+               ...prev,
+               gold: prev.gold - cost,
+               inventory: updatedInventory,
+               equipment: updatedEquipment
+           };
+      });
+
+      eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Objeto mejorado a +${upgradedItem.upgradeLevel}!`, type: 'success' });
+  };
+
   return {
     player,
     gameStarted,
@@ -591,7 +715,10 @@ export const useGameState = () => {
         refreshSingleQuest,
         performSummon,
         equipEcho,
-        burnEcho
+        burnEcho,
+        craftItem,
+        salvageItem,
+        upgradeItem
     }
   };
 };

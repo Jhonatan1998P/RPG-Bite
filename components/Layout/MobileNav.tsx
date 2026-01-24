@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Scroll, Swords, FileText, ShoppingBag, Menu, X, ChevronRight, Compass, TrendingUp, LogOut, Infinity } from 'lucide-react';
+import { User, Scroll, Swords, FileText, ShoppingBag, Menu, X, ChevronRight, Compass, TrendingUp, LogOut, Infinity, Hammer } from 'lucide-react';
 import { ViewState } from '../../types';
 
 interface MobileNavProps {
@@ -24,6 +24,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onEx
       { id: ViewState.PROFILE, label: 'Héroe', icon: User, desc: 'Atributos y Equipo', color: 'text-blue-400', bg: 'bg-blue-900/20', border: 'border-blue-500/30' },
       { id: ViewState.TAVERN, label: 'Taberna', icon: Scroll, desc: 'Misiones y Contratos', color: 'text-yellow-400', bg: 'bg-yellow-900/20', border: 'border-yellow-500/30' },
       { id: ViewState.ARENA, label: 'Arena', icon: Swords, desc: 'Combate PvP', color: 'text-red-400', bg: 'bg-red-900/20', border: 'border-red-500/30' },
+      { id: ViewState.FORGE, label: 'Herrería', icon: Hammer, desc: 'Forja y Mejoras', color: 'text-amber-400', bg: 'bg-amber-900/20', border: 'border-amber-500/30' },
       { id: ViewState.GACHA, label: 'Altar', icon: Infinity, desc: 'Invoca Ecos', color: 'text-cyan-400', bg: 'bg-cyan-900/20', border: 'border-cyan-500/30' },
       { id: ViewState.RANKINGS, label: 'Rankings', icon: TrendingUp, desc: 'Clasificación de Liga', color: 'text-orange-400', bg: 'bg-orange-900/20', border: 'border-orange-500/30' },
       { id: ViewState.MERCHANT, label: 'Mercader', icon: ShoppingBag, desc: 'Comprar y Vender', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-500/30' },

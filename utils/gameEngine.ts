@@ -1,6 +1,6 @@
 
-import { Player, Enemy, Stats, StatType, Quest, QuestRarity, Item, ItemType, BattleTurn, ArenaOpponent, CombatResult, Echo, EchoRarity, Equipment, WorldEvent } from "../types";
-import { GAMER_ROOTS, GAMER_TAGS_PREFIX, GAMER_TAGS_SUFFIX, ENEMY_ARCHETYPES, QUEST_TITLES_PREFIX, QUEST_TITLES_SUFFIX, ITEM_TEMPLATES, RARITY_CONFIG, AFFIXES, ITEM_ASSETS, LEAGUES, League, GACHA_CONFIG, ECHO_TEMPLATES, LEAGUE_NAMES, GAME_EVENTS } from "../data/constants";
+import { Player, Enemy, Stats, StatType, Quest, QuestRarity, Item, ItemType, BattleTurn, ArenaOpponent, CombatResult, Echo, EchoRarity, Equipment, WorldEvent, MaterialType } from "../types";
+import { GAMER_ROOTS, GAMER_TAGS_PREFIX, GAMER_TAGS_SUFFIX, ENEMY_ARCHETYPES, QUEST_TITLES_PREFIX, QUEST_TITLES_SUFFIX, ITEM_TEMPLATES, RARITY_CONFIG, AFFIXES, ITEM_ASSETS, LEAGUES, League, GACHA_CONFIG, ECHO_TEMPLATES, LEAGUE_NAMES, GAME_EVENTS, MATERIALS_CONFIG, UPGRADE_CONFIG } from "../data/constants";
 
 // --- GACHA ENGINE ---
 
@@ -214,44 +214,64 @@ export const getChallengers = (ladder: ArenaOpponent[], playerRank: number): Are
     return ladder.filter(opp => targets.includes(opp.arenaRank || 999)).sort((a,b) => (a.arenaRank||0) - (b.arenaRank||0)).slice(0, 5);
 };
 
-export const generateProceduralItem = (level: number, rarityBonus: boolean = false): Item => {
-    const template = ITEM_TEMPLATES[Math.floor(Math.random() * ITEM_TEMPLATES.length)];
+export const generateProceduralItem = (level: number, rarityBonus: boolean = false, fixedRarity?: QuestRarity, fixedType?: ItemType): Item => {
+    // Filter templates if fixedType is provided
+    const templates = fixedType
+        ? ITEM_TEMPLATES.filter(t => t.type === fixedType)
+        : ITEM_TEMPLATES;
+
+    const template = templates[Math.floor(Math.random() * templates.length)];
     
     // Rarity
-    const roll = Math.random();
     let rarity: QuestRarity = 'Común';
     
-    // LUCKY_LOOT Event Logic (+50% chance for higher rarities roughly simplified by checking higher tiers first with lower thresholds or double rolls)
-    // Simplified: If rarityBonus is true, we treat the roll as if it was better.
-    const effectiveRoll = rarityBonus ? Math.min(0.99, roll + 0.15) : roll;
+    if (fixedRarity) {
+        rarity = fixedRarity;
+    } else {
+        const roll = Math.random();
+        const effectiveRoll = rarityBonus ? Math.min(0.99, roll + 0.15) : roll;
 
-    if (effectiveRoll > 0.98) rarity = 'Legendario'; // Was 0.99
-    else if (effectiveRoll > 0.90) rarity = 'Épico'; // Was 0.96
-    else if (effectiveRoll > 0.70) rarity = 'Raro'; // Was 0.80
-    else if (effectiveRoll > 0.40) rarity = 'Poco Común'; // Was 0.50
+        if (effectiveRoll > 0.98) rarity = 'Legendario';
+        else if (effectiveRoll > 0.90) rarity = 'Épico';
+        else if (effectiveRoll > 0.70) rarity = 'Raro';
+        else if (effectiveRoll > 0.40) rarity = 'Poco Común';
+    }
 
     const config = RARITY_CONFIG[rarity];
     
     // Stats
     const stats: Partial<Stats> = {};
-    const mainStatVal = Math.max(1, Math.floor(template.baseVal * (1 + (level * 0.1)) * config.mult * (0.9 + Math.random() * 0.2)));
+    const mainStatVal = Math.max(1, Math.floor(template.baseVal * (1 + (level * 0.15)) * config.mult * (0.9 + Math.random() * 0.2)));
     stats[template.baseStat] = mainStatVal;
 
-    // Affixes
+    // Affixes Logic (Smarter)
     let name = template.nameTemplate;
     const numAffixes = config.slots;
     
+    // Filter valid affixes for this item type
+    const validPrefixes = AFFIXES.PREFIXES.filter(p => !p.allowedTypes || p.allowedTypes.length === 0 || p.allowedTypes.includes(template.type));
+    // Suffixes are generally generic in my config, but if I added restriction I should filter them too.
+    // Assuming suffixes are generic for now or strictly stat based.
+    const validSuffixes = AFFIXES.SUFFIXES; // Add filter if needed later
+
     for (let i = 0; i < numAffixes; i++) {
-        if (Math.random() > 0.5) {
-            const prefix = AFFIXES.PREFIXES[Math.floor(Math.random() * AFFIXES.PREFIXES.length)];
-            stats[prefix.stat] = (stats[prefix.stat] || 0) + Math.max(1, Math.floor(mainStatVal * 0.3));
-            if (!name.includes(prefix.name)) name = `${prefix.name} ${name}`;
-        } else {
-            const suffix = AFFIXES.SUFFIXES[Math.floor(Math.random() * AFFIXES.SUFFIXES.length)];
-            stats[suffix.stat] = (stats[suffix.stat] || 0) + Math.max(1, Math.floor(mainStatVal * 0.3));
+        // Force at least one prefix if possible for better naming
+        const usePrefix = (Math.random() > 0.5) || (i === 0);
+
+        if (usePrefix && validPrefixes.length > 0) {
+            const prefix = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+            // Apply stat mod
+            stats[prefix.stat] = (stats[prefix.stat] || 0) + Math.max(1, Math.floor(mainStatVal * (prefix.mod - 1.0) * 2)); // Logic changed: affix adds extra based on main stat
+             if (!name.includes(prefix.name)) name = `${prefix.name} ${name}`;
+        } else if (validSuffixes.length > 0) {
+            const suffix = validSuffixes[Math.floor(Math.random() * validSuffixes.length)];
+             stats[suffix.stat] = (stats[suffix.stat] || 0) + Math.max(1, Math.floor(mainStatVal * (suffix.mod - 1.0) * 2));
             if (!name.includes(suffix.name)) name = `${name} ${suffix.name}`;
         }
     }
+
+    // Ensure main stat is present and dominant
+    if (!stats[template.baseStat]) stats[template.baseStat] = mainStatVal;
 
     const assetList = ITEM_ASSETS[template.subtype] || [];
     const image = assetList.length > 0 ? assetList[Math.floor(Math.random() * assetList.length)] : "https://via.placeholder.com/150";
@@ -266,7 +286,73 @@ export const generateProceduralItem = (level: number, rarityBonus: boolean = fal
         cost: Math.floor(mainStatVal * 15 * config.mult),
         stats,
         description: `Objeto ${rarity.toLowerCase()} de nivel ${level}.`,
-        image
+        image,
+        upgradeLevel: 0
+    };
+};
+
+export const generateLoot = (level: number): { item?: Item, material?: { type: MaterialType, amount: number } } => {
+    const roll = Math.random();
+
+    // 30% Chance for Gear
+    if (roll < 0.3) {
+        return { item: generateProceduralItem(level) };
+    }
+
+    // 50% Chance for Materials
+    if (roll < 0.8) {
+         const matRoll = Math.random();
+         let matType = MaterialType.SCRAP;
+         let amount = Math.floor(Math.random() * 3) + 1;
+
+         if (matRoll > 0.95) { matType = MaterialType.GEM; amount = 1; }
+         else if (matRoll > 0.85) { matType = MaterialType.ESSENCE; amount = Math.floor(Math.random() * 2) + 1; }
+         else if (matRoll > 0.70) { matType = MaterialType.ORE; amount = Math.floor(Math.random() * 3) + 1; }
+         else if (matRoll > 0.50) { matType = MaterialType.LEATHER; amount = Math.floor(Math.random() * 4) + 1; }
+         else if (matRoll > 0.30) { matType = MaterialType.WOOD; amount = Math.floor(Math.random() * 5) + 1; }
+
+         return { material: { type: matType, amount } };
+    }
+
+    // 20% Nothing (Just Gold/XP from source)
+    return {};
+};
+
+export const salvageItem = (item: Item): { type: MaterialType, amount: number }[] => {
+    const result: { type: MaterialType, amount: number }[] = [];
+
+    // Base Scrap
+    result.push({ type: MaterialType.SCRAP, amount: Math.max(1, Math.floor(item.level / 2)) });
+
+    // Type specific
+    if (item.type === ItemType.WEAPON) result.push({ type: MaterialType.WOOD, amount: Math.floor(Math.random() * 2) + 1 });
+    if (item.type === ItemType.ARMOR) result.push({ type: MaterialType.LEATHER, amount: Math.floor(Math.random() * 2) + 1 });
+    if (item.type === ItemType.HELMET) result.push({ type: MaterialType.ORE, amount: 1 });
+
+    // Rarity Bonus
+    if (item.rarity === 'Raro') result.push({ type: MaterialType.ORE, amount: 2 });
+    if (item.rarity === 'Épico') result.push({ type: MaterialType.ESSENCE, amount: 1 });
+    if (item.rarity === 'Legendario') result.push({ type: MaterialType.GEM, amount: 1 });
+
+    return result;
+};
+
+export const upgradeItem = (item: Item): Item => {
+    if ((item.upgradeLevel || 0) >= UPGRADE_CONFIG.MAX_LEVEL) return item;
+
+    const newLevel = (item.upgradeLevel || 0) + 1;
+    const newStats = { ...item.stats };
+
+    // Increase all existing stats
+    for (const key in newStats) {
+        newStats[key as StatType] = Math.floor((newStats[key as StatType] || 0) * UPGRADE_CONFIG.STAT_GROWTH);
+    }
+
+    return {
+        ...item,
+        upgradeLevel: newLevel,
+        stats: newStats,
+        name: item.name.includes(`+${newLevel - 1}`) ? item.name.replace(`+${newLevel - 1}`, `+${newLevel}`) : `${item.name} +${newLevel}`
     };
 };
 
@@ -330,7 +416,11 @@ export const generateProceduralQuest = (player: Player, seed: number): Quest => 
 
     const recommendedStat = [StatType.STRENGTH, StatType.DEXTERITY, StatType.INTELLIGENCE][Math.floor(Math.random() * 3)];
 
-    const itemReward = Math.random() > 0.8 ? generateProceduralItem(player.level) : undefined;
+    // Loot Logic for Quest
+    const loot = generateLoot(player.level);
+    const itemReward = loot.item;
+    const materialReward = loot.material;
+
     if (itemReward && rarity === 'Legendario') itemReward.rarity = 'Legendario'; 
 
     return {
@@ -344,7 +434,8 @@ export const generateProceduralQuest = (player: Player, seed: number): Quest => 
         energyCost,
         description: "Cargando descripción...",
         recommendedStat,
-        itemReward
+        itemReward,
+        materialReward
     };
 };
 
@@ -425,10 +516,18 @@ export const simulateCombat = (player: Player, enemy: Enemy | ArenaOpponent): Co
         round++;
     }
 
+    const isVictory = pHP > 0;
+    let loot = undefined;
+
+    if (isVictory) {
+        loot = generateLoot(enemy.level);
+    }
+
     return {
-        isVictory: pHP > 0,
+        isVictory,
         rounds: round,
         remainingHp: pHP,
-        turns
+        turns,
+        loot
     };
 };

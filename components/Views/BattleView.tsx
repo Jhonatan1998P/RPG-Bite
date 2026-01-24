@@ -218,6 +218,24 @@ export const BattleView: React.FC<BattleViewProps> = ({ player, enemy, narrative
                              <span className="font-mono text-purple-400 font-bold">+{result.xpChange}</span>
                         </div>
                     </div>
+
+                    {result.loot && (
+                        <div className="mb-6 p-3 bg-black/40 rounded-lg border border-white/5">
+                            <span className="text-[10px] uppercase text-slate-500 font-bold block mb-2">Recompensas Adicionales</span>
+                            <div className="flex flex-col gap-1">
+                                {result.loot.item && (
+                                    <span className="text-xs text-amber-300 font-bold flex items-center justify-center gap-1">
+                                        <Sword className="w-3 h-3" /> {result.loot.item.name}
+                                    </span>
+                                )}
+                                {result.loot.material && (
+                                    <span className="text-xs text-slate-300 font-mono flex items-center justify-center gap-1">
+                                        <Shield className="w-3 h-3" /> +{result.loot.material.amount} Material
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     
                     <button 
                         onClick={onFinish} 
