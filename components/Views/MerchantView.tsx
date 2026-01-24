@@ -152,7 +152,7 @@ export const MerchantView: React.FC<MerchantViewProps> = ({ player, onBuyItem, o
   const equipItems = player.merchantInventory.filter(i => i.type !== ItemType.FOOD);
 
   return (
-    <div className="flex flex-col h-full gap-4 animate-fade-in pb-2 overflow-hidden">
+    <div className="flex flex-col gap-6 animate-fade-in pb-20 md:pb-6">
       
       {/* 1. HEADER */}
       <ViewHeader
@@ -216,7 +216,7 @@ export const MerchantView: React.FC<MerchantViewProps> = ({ player, onBuyItem, o
       </div>
 
       {/* 3. INVENTORY GRID */}
-      <div className="flex-grow min-h-0 overflow-y-auto custom-scrollbar pr-1 space-y-6">
+      <div className="space-y-6">
         
         {/* BUY MODE */}
         {tab === 'BUY' && (

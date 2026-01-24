@@ -77,6 +77,26 @@ export interface ArenaOpponent extends Enemy {
     isPlayer?: boolean; // To mark the player in the ladder
 }
 
+// --- WORLD EVENTS ---
+export enum EventType {
+    GOLD_RUSH = 'FIEBRE_ORO',
+    XP_BOOST = 'ILUMINACION',
+    RUBY_HUNT = 'LUNA_SANGRE', // El evento de rubíes
+    DISCOUNT = 'MERCADO_NEGRO',
+    SPEED = 'VIENTO_VELOZ',
+    LUCKY_LOOT = 'FORTUNA_DIVINA'
+}
+
+export interface WorldEvent {
+    type: EventType;
+    name: string;
+    description: string;
+    color: string; // Tailwind color class for UI
+    duration: number; // Ms
+    multiplier: number; // Generic multiplier for the logic to use
+    iconName: string; // Icon identifier
+}
+
 export interface Player {
   name: string;
   level: number;
@@ -86,7 +106,7 @@ export interface Player {
   maxHp: number;
   gold: number;
   rubies: number;
-  voidDust: number; // Nueva moneda para Gacha/Crafteo
+  voidDust: number; 
   stats: Stats;
   energy: number;
   maxEnergy: number;
@@ -97,17 +117,20 @@ export interface Player {
   // Echoes System
   echoesInventory: Echo[];
   equippedEcho: Echo | null;
-  pityCounter: number; // Contador para asegurado
-  lastDailySummon: number; // Timestamp
+  pityCounter: number; 
+  lastDailySummon: number; 
+
+  // World Event System
+  activeEvent: WorldEvent | null;
+  eventEndTime: number;
+  nextEventCheck: number; // Timestamp to roll for next event
 
   currentQuests: Quest[]; 
   nextArenaBattle: number; 
   nextTavernRefresh: number;
-  // Arena Specs - MOVED INSIDE PLAYER FOR PERSISTENCE
-  arenaRank: number; // 1 to 50
-  arenaLeague: string; // ID of the league
+  arenaRank: number; 
+  arenaLeague: string; 
   arenaLadder: ArenaOpponent[]; 
-  // Merchant Specs
   merchantInventory: Item[];
   nextMerchantRefresh: number;
 }
@@ -166,5 +189,5 @@ export enum ViewState {
   BATTLE = 'BATALLA',
   REPORTS = 'INFORMES',
   MERCHANT = 'MERCADER',
-  GACHA = 'ALTAR' // Nueva vista
+  GACHA = 'ALTAR'
 }

@@ -41,7 +41,6 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
   const [refreshTimeLeft, setRefreshTimeLeft] = useState<string>('');
   const [canFreeRefresh, setCanFreeRefresh] = useState(true);
 
-  // ... (Keep existing logic for generation, timers, and active quest tick - NO CHANGE IN LOGIC) ...
   const generateQuests = async (count: number) => {
     setIsLoadingQuests(true);
     const newQuests: Quest[] = [];
@@ -153,10 +152,7 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
 
   // --- RENDERING ---
 
-  // ... (Active Quest Modal & Result Modal logic remains identical, just truncated here for brevity/SRP focus - they are technically separate concerns but keeping them in file for now) ...
-  // Keeping Modals as they were in original file to avoid breaking flow, assuming they are "View Specific"
   if (showActiveModal && activeQuest) {
-      // (Same Modal Code)
       return (
           <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 animate-fade-in bg-black/80 backdrop-blur-sm">
               <div className="relative w-full max-w-2xl rounded-3xl overflow-hidden border border-gold-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
@@ -229,7 +225,7 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
   }
 
   return (
-    <div className="flex flex-col gap-6 h-full pb-6">
+    <div className="flex flex-col gap-6 pb-20 md:pb-6">
       
       {/* 1. REFACTORED HEADER */}
       <ViewHeader 
@@ -298,14 +294,14 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
       </ViewHeader>
 
       {/* 2. REFACTORED QUEST GRID USING GAMECARD */}
-      <div className="flex-grow min-h-0">
+      <div>
         {player.currentQuests.length === 0 && !isLoadingQuests ? (
             <div className="glass-panel p-10 text-center flex flex-col items-center justify-center h-64 border border-white/5 bg-slate-900/50 rounded-3xl">
                 <Loader2 className="w-10 h-10 text-gold-500 animate-spin mb-4 opacity-50" />
                 <p className="text-slate-500 font-serif text-lg animate-pulse">El escriba está redactando nuevos contratos...</p>
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20 md:pb-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {player.currentQuests.map((quest) => {
                     const successChance = calculateQuestSuccessChance(quest, player);
                     const isRisky = successChance < 0.6;
