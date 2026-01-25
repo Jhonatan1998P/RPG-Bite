@@ -11,7 +11,7 @@ import { GameCard } from '../UI/GameCard';
 
 interface TavernViewProps {
   player: Player;
-  onAcceptQuest: (quest: Quest) => Promise<string>;
+  onAcceptQuest: (quest: Quest) => Promise<{ text: string, rewards?: { gold: number, xp: number, item?: any, material?: any } }>;
   onDeductGold: (amount: number) => boolean;
   onRefreshTavern: () => void;
   onUpdateQuests: (quests: Quest[]) => void;
@@ -32,8 +32,8 @@ const getQuestImage = (title: string): string => {
 };
 
 export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, onDeductGold, onRefreshTavern, onUpdateQuests, onUseRuby, onRefreshSingleQuest }) => {
+  const [questResult, setQuestResult] = useState<{success: boolean, text: string, rewards?: { gold: number, xp: number, item?: any, material?: any }} | null>(null);
   const [activeQuest, setActiveQuest] = useState<Quest | null>(null);
-  const [questResult, setQuestResult] = useState<{success: boolean, text: string} | null>(null);
   const [isLoadingQuests, setIsLoadingQuests] = useState(false);
   const [questProgress, setQuestProgress] = useState(0);
   const [questLog, setQuestLog] = useState<string[]>([]);
@@ -130,8 +130,12 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
               }
               if (currentTicks >= totalTicks) {
                   clearInterval(interval);
-                  const resultText = await onAcceptQuest(activeQuest);
-                  setQuestResult({ success: true, text: resultText }); 
+                  const result = await onAcceptQuest(activeQuest);
+                  setQuestResult({ 
+                    success: true, 
+                    text: result.text,
+                    rewards: result.rewards
+                  }); 
                   setShowActiveModal(false);
                   onUpdateQuests(player.currentQuests.filter(q => q.id !== activeQuest.id));
                   setActiveQuest(null);
@@ -154,13 +158,13 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
 
   if (showActiveModal && activeQuest) {
       return (
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 animate-fade-in bg-black/80 backdrop-blur-sm">
-              <div className="relative w-full max-w-2xl rounded-3xl overflow-hidden border border-gold-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 md:p-6 animate-fade-in bg-black/80 backdrop-blur-sm overflow-y-auto">
+              <div className="relative w-full max-w-2xl my-auto rounded-3xl overflow-hidden border border-gold-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] bg-slate-950">
                   <div className="absolute inset-0">
                       <img src={getQuestImage(activeQuest.title)} className="w-full h-full object-cover opacity-30" alt="Background" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-950/80"></div>
                   </div>
-                  <div className="relative z-10 p-8 flex flex-col gap-6">
+                  <div className="relative z-10 p-6 md:p-8 flex flex-col gap-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
                       <div className="text-center">
                           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-900/30 border border-gold-500/30 text-gold-400 text-xs font-bold uppercase tracking-widest mb-4 animate-pulse">
                               <Sparkles className="w-3 h-3" /> Misión en Curso
@@ -172,7 +176,7 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
                                 <span>{activeQuest.duration} segundos estimados</span>
                           </div>
                       </div>
-                      <div className="relative h-40 bg-black/50 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center group">
+                      <div className="relative h-40 shrink-0 bg-black/50 rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center group">
                             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800/50 via-slate-950 to-black opacity-50"></div>
                             <div className="relative z-10">
                                 <div className="absolute inset-0 bg-gold-500 blur-2xl opacity-20 animate-pulse"></div>
@@ -202,19 +206,54 @@ export const TavernView: React.FC<TavernViewProps> = ({ player, onAcceptQuest, o
 
   if (questResult) {
       return (
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 animate-fade-in bg-black/90 backdrop-blur-md">
-              <div className="glass-panel p-1 rounded-2xl max-w-lg w-full shadow-[0_0_60px_rgba(0,0,0,0.7)] animate-scale-in">
-                <div className="bg-slate-900/95 p-8 rounded-xl text-center relative overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 animate-fade-in bg-black/90 backdrop-blur-md overflow-y-auto">
+              <div className="glass-panel p-1 my-auto rounded-2xl max-w-lg w-full shadow-[0_0_60px_rgba(0,0,0,0.7)] animate-scale-in bg-slate-900">
+                <div className="p-6 md:p-8 rounded-xl text-center relative overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
                     <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${questResult.success ? 'from-transparent via-gold-500 to-transparent' : 'from-transparent via-red-500 to-transparent'}`}></div>
                     <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 border-2 ${questResult.success ? 'border-gold-500 bg-gold-900/20' : 'border-red-500 bg-red-900/20'}`}>
                         {questResult.success ? <Sparkles className="w-8 h-8 text-gold-500" /> : <Skull className="w-8 h-8 text-red-500" />}
                     </div>
-                    <h2 className={`font-serif text-3xl mb-6 tracking-widest uppercase ${questResult.success ? 'text-gold-400' : 'text-red-400'}`}>
+                    <h2 className={`font-serif text-3xl mb-4 tracking-widest uppercase ${questResult.success ? 'text-gold-400' : 'text-red-400'}`}>
                         {questResult.success ? 'Misión Cumplida' : 'Fracaso'}
                     </h2>
-                    <div className="bg-black/40 p-6 rounded-xl border border-white/5 mb-8">
-                        <p className="text-slate-300 text-lg leading-relaxed italic font-serif">"{questResult.text}"</p>
+                    
+                    <div className="bg-black/40 p-5 rounded-xl border border-white/5 mb-6 text-left">
+                        <p className="text-slate-300 text-base leading-relaxed italic font-serif mb-4">"{questResult.text}"</p>
+                        
+                        {questResult.success && questResult.rewards && (
+                            <div className="space-y-3 pt-4 border-t border-white/10">
+                                <h4 className="text-[10px] uppercase tracking-[0.2em] text-gold-500 font-bold">Botín obtenido</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-slate-800/50 p-2 rounded-lg border border-gold-500/20 flex items-center gap-2">
+                                        <Coins className="w-4 h-4 text-gold-400" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-slate-400 leading-none">Oro</span>
+                                            <span className="text-sm font-mono font-bold text-white">+{questResult.rewards.gold}</span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-800/50 p-2 rounded-lg border border-purple-500/20 flex items-center gap-2">
+                                        <Zap className="w-4 h-4 text-purple-400" />
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-slate-400 leading-none">Exp</span>
+                                            <span className="text-sm font-mono font-bold text-white">+{questResult.rewards.xp}</span>
+                                        </div>
+                                    </div>
+                                    {questResult.rewards.item && (
+                                        <div className="col-span-2 bg-slate-800/50 p-2 rounded-lg border border-amber-500/20 flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-amber-900/30 rounded border border-amber-500/30 flex items-center justify-center">
+                                                <Sparkles className="w-4 h-4 text-amber-400" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] text-slate-400 leading-none">Objeto</span>
+                                                <span className="text-sm font-bold text-amber-300">{questResult.rewards.item.name}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
+
                     <button onClick={() => setQuestResult(null)} className="w-full px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold font-serif rounded-xl transition-all border border-white/10 uppercase tracking-wider">
                         Continuar
                     </button>

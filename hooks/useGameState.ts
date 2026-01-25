@@ -380,11 +380,13 @@ export const useGameState = () => {
       }
   };
 
-  const processQuest = async (quest: Quest): Promise<string> => {
+  const processQuest = async (quest: Quest): Promise<{ text: string, rewards?: { gold: number, xp: number, item?: any, material?: any } }> => {
       setPlayer(prev => ({ ...prev, energy: prev.energy - quest.energyCost }));
       const successChance = calculateQuestSuccessChance(quest, player);
       const isSuccess = Math.random() <= successChance;
       const resultText = await generateQuestResult(quest.title, isSuccess);
+
+      let rewards: any = null;
 
       if (isSuccess) {
           setPlayer(prev => {
@@ -394,6 +396,11 @@ export const useGameState = () => {
               
               if (prev.activeEvent?.type === EventType.XP_BOOST) finalXpReward = Math.floor(finalXpReward * prev.activeEvent.multiplier);
               if (prev.activeEvent?.type === EventType.GOLD_RUSH) finalGoldReward = Math.floor(finalGoldReward * prev.activeEvent.multiplier);
+
+              rewards = {
+                gold: finalGoldReward,
+                xp: finalXpReward
+              };
 
               const newXp = prev.xp + finalXpReward;
               const levelCheck = checkLevelUp(newXp, prev.maxXp, prev.level);
@@ -412,17 +419,20 @@ export const useGameState = () => {
               // Item Reward
               if (quest.itemReward && updatedInv.length < 20) {
                   updatedInv.push(quest.itemReward);
+                  rewards.item = quest.itemReward;
                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Obtuviste ${quest.itemReward.name}!`, type: 'success' });
               } else if (prev.activeEvent?.type === EventType.LUCKY_LOOT && Math.random() < 0.2 && updatedInv.length < 20) {
                    const bonusItem = generateProceduralItem(prev.level, true);
                    updatedInv.push(bonusItem);
+                   rewards.item = bonusItem;
                    eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Fortuna Divina! Encontraste ${bonusItem.name}`, type: 'success' });
               }
 
               // Material Reward
               if (quest.materialReward) {
                   updatedMaterials[quest.materialReward.type] = (updatedMaterials[quest.materialReward.type] || 0) + quest.materialReward.amount;
-                   eventBus.emit(EventTypes.SHOW_TOAST, { message: `Material: +${quest.materialReward.amount} ${MATERIALS_CONFIG[quest.materialReward.type].name}`, type: 'success' });
+                  rewards.material = quest.materialReward;
+                  eventBus.emit(EventTypes.SHOW_TOAST, { message: `Material: +${quest.materialReward.amount} ${MATERIALS_CONFIG[quest.materialReward.type].name}`, type: 'success' });
               }
 
               return {
@@ -452,7 +462,7 @@ export const useGameState = () => {
           }));
           eventBus.emit(EventTypes.SHOW_TOAST, { message: `Misión fallida. -${hpLoss} HP`, type: 'error' });
       }
-      return resultText;
+      return { text: resultText, rewards };
   };
 
   const processBattleResult = (log: BattleLog, opponentRank: number) => {
