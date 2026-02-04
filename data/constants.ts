@@ -1,5 +1,5 @@
 
-import { StatType, ItemType, QuestRarity, EchoRarity, WorldEvent, EventType, MaterialType } from "../types";
+import { StatType, ItemType, QuestRarity, EchoRarity, WorldEvent, EventType, MaterialType, Cosmetic } from "../types";
 
 // --- CRAFTING & MATERIALS ---
 
@@ -57,6 +57,17 @@ export const CRAFTING_RECIPES: Record<string, Record<QuestRarity, Partial<Record
         'Legendario': { [MaterialType.ORE]: 20, [MaterialType.ESSENCE]: 15, [MaterialType.GEM]: 2 }
     }
 };
+
+export const COSMETICS_DATA: Cosmetic[] = [
+  { id: 'default-title', name: 'Viajero', type: 'TITLE', value: 'Viajero', rarity: 'Común' },
+  { id: 'shadow-walker', name: 'Caminante de Sombras', type: 'TITLE', value: 'Caminante de Sombras', rarity: 'Raro', requirement: 'Nivel 10' },
+  { id: 'void-conqueror', name: 'Conquistador del Vacío', type: 'TITLE', value: 'Conquistador del Vacío', rarity: 'Épico', requirement: 'Rango #1 Arena' },
+  { id: 'default-frame', name: 'Marco de Madera', type: 'FRAME', value: 'border-white/10', rarity: 'Común' },
+  { id: 'gold-frame', name: 'Marco Dorado', type: 'FRAME', value: 'border-gold-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]', rarity: 'Épico', requirement: 'Acumular 10,000 Oro' },
+  { id: 'blood-frame', name: 'Marco de Sangre', type: 'FRAME', value: 'border-red-600/50 shadow-[0_0_15px_rgba(220,38,38,0.4)]', rarity: 'Legendario', requirement: 'Evento Luna de Sangre' },
+  { id: 'default-bg', name: 'Bosque Sombrío', type: 'BACKGROUND', value: 'https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=800&auto=format&fit=crop', rarity: 'Común' },
+  { id: 'castle-bg', name: 'Castillo en Ruinas', type: 'BACKGROUND', value: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=800&auto=format&fit=crop', rarity: 'Raro' },
+];
 
 export const QUEST_TITLES_PREFIX = ['Ruinas', 'Bosque', 'Cripta', 'Torre', 'Caverna', 'Páramo', 'Ciudadela', 'Puerto', 'Laberinto', 'Abismo'];
 export const QUEST_TITLES_SUFFIX = ['Olvidadas', 'Maldito', 'del Rey', 'Oscura', 'de Hielo', 'Ardiente', 'de Sombras', 'Muerto', 'del Vacío', 'Eterno'];
