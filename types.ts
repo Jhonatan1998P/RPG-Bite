@@ -107,6 +107,15 @@ export interface WorldEvent {
     iconName: string; // Icon identifier
 }
 
+export interface Cosmetic {
+  id: string;
+  name: string;
+  type: 'TITLE' | 'FRAME' | 'BACKGROUND';
+  value: string; // The CSS class, color, or image URL
+  rarity: QuestRarity;
+  requirement?: string;
+}
+
 export interface Player {
   name: string;
   level: number;
@@ -134,6 +143,14 @@ export interface Player {
   activeEvent: WorldEvent | null;
   eventEndTime: number;
   nextEventCheck: number; // Timestamp to roll for next event
+
+  // Cosmetics System
+  cosmetics: {
+    unlockedIds: string[];
+    activeTitle: string | null;
+    activeFrame: string | null;
+    activeBackground: string | null;
+  };
 
   currentQuests: Quest[]; 
   nextArenaBattle: number; 

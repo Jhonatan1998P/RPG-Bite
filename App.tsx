@@ -175,6 +175,7 @@ export default function App() {
                             onEquipItem={actions.equipItem}
                             onUnequipItem={actions.unequipItem}
                             onConsumeItem={actions.consumeItem}
+                            onSetCosmetic={actions.setCosmetic}
                         />
                     )}
                     

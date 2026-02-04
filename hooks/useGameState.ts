@@ -46,6 +46,14 @@ const INITIAL_PLAYER: Player = {
   eventEndTime: 0,
   nextEventCheck: 0,
 
+  // Cosmetics State
+  cosmetics: {
+    unlockedIds: ['default-title', 'default-frame', 'default-bg'],
+    activeTitle: 'default-title',
+    activeFrame: 'default-frame',
+    activeBackground: 'default-bg',
+  },
+
   currentQuests: [],
   nextArenaBattle: 0,
   nextTavernRefresh: 0,
@@ -701,6 +709,17 @@ export const useGameState = () => {
       eventBus.emit(EventTypes.SHOW_TOAST, { message: `¡Objeto mejorado a +${upgradedItem.upgradeLevel}!`, type: 'success' });
   };
 
+  const setCosmetic = (type: 'TITLE' | 'FRAME' | 'BACKGROUND', id: string | null) => {
+    setPlayer(prev => ({
+      ...prev,
+      cosmetics: {
+        ...prev.cosmetics,
+        [type === 'TITLE' ? 'activeTitle' : type === 'FRAME' ? 'activeFrame' : 'activeBackground']: id
+      }
+    }));
+    eventBus.emit(EventTypes.SHOW_TOAST, { message: "Apariencia actualizada.", type: 'success' });
+  };
+
   return {
     player,
     gameStarted,
@@ -728,7 +747,8 @@ export const useGameState = () => {
         burnEcho,
         craftItem,
         salvageItem,
-        upgradeItem
+        upgradeItem,
+        setCosmetic
     }
   };
 };

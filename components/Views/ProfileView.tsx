@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import { Player, StatType, ItemType, Item, Equipment, Stats, Echo } from '../../types';
+import { Player, StatType, ItemType, Item, Equipment, Stats, Echo, Cosmetic } from '../../types';
 import { calculateStatCost, calculatePlayerTotalStats, calculateFoodHealing } from '../../utils/gameEngine';
-import { Heart, Coins, Gem, Brain, BicepsFlexed, Wind, Shield, Sword, Backpack, Shirt, Footprints, Zap, Crown, Check, Utensils, Infinity, Dna } from 'lucide-react';
+import { Heart, Coins, Gem, Brain, BicepsFlexed, Wind, Shield, Sword, Backpack, Shirt, Footprints, Zap, Crown, Check, Utensils, Infinity, Dna, Image as ImageIcon, Type, Frame } from 'lucide-react';
 import { TooltipTrigger } from '../UI/TooltipTrigger';
 import { ItemIcon } from '../UI/ItemIcon';
 import { eventBus, EventTypes } from '../../services/eventBus';
+import { COSMETICS_DATA } from '../../data/constants';
 
 // --- INTERFACES ---
 
@@ -15,6 +16,7 @@ interface ProfileViewProps {
   onEquipItem: (item: Item) => void;
   onUnequipItem: (type: ItemType) => void;
   onConsumeItem: (item: Item) => void;
+  onSetCosmetic: (type: 'TITLE' | 'FRAME' | 'BACKGROUND', id: string | null) => void;
 }
 
 interface HeroStatsSectionProps {
@@ -203,14 +205,18 @@ const InventorySlot: React.FC<{
 
 // Extracted Component: HeroStatsSection
 const HeroStatsSection: React.FC<HeroStatsSectionProps> = ({ player, totalStats, onTrainStat }) => {
+    const activeTitle = useMemo(() => COSMETICS_DATA.find(c => c.id === player.cosmetics.activeTitle), [player.cosmetics.activeTitle]);
+    const activeFrame = useMemo(() => COSMETICS_DATA.find(c => c.id === player.cosmetics.activeFrame), [player.cosmetics.activeFrame]);
+    const activeBackground = useMemo(() => COSMETICS_DATA.find(c => c.id === player.cosmetics.activeBackground), [player.cosmetics.activeBackground]);
+
     return (
       <div className="flex flex-col gap-4">
           {/* Avatar Card */}
-          <div className="shrink-0 relative rounded-2xl overflow-hidden border border-white/10 group shadow-2xl">
+          <div className={`shrink-0 relative rounded-2xl overflow-hidden border group shadow-2xl ${activeFrame?.value || 'border-white/10'}`}>
               <div className="aspect-[16/9] md:aspect-[21/9] lg:aspect-[16/9] relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10"></div>
                   <img 
-                      src="https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=800&auto=format&fit=crop" 
+                      src={activeBackground?.value || "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=800&auto=format&fit=crop"} 
                       alt="Hero" 
                       className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
                   />
@@ -221,7 +227,9 @@ const HeroStatsSection: React.FC<HeroStatsSectionProps> = ({ player, totalStats,
                               <TooltipTrigger content="Tu nivel actual. Sube XP completando misiones y ganando batallas.">
                                   <span className="px-2 py-0.5 bg-gold-600 text-black text-[10px] font-bold uppercase rounded shadow-lg cursor-help">Nvl {player.level}</span>
                               </TooltipTrigger>
-                              <span className="text-slate-300 text-[10px] tracking-widest uppercase bg-black/60 px-2 py-0.5 rounded border border-white/10">Sombra</span>
+                              <span className="text-slate-300 text-[10px] tracking-widest uppercase bg-black/60 px-2 py-0.5 rounded border border-white/10">
+                                {activeTitle?.value || 'Sombra'}
+                              </span>
                           </div>
                           <h2 className="font-serif text-2xl font-bold text-white text-shadow">{player.name}</h2>
                       </div>
@@ -411,10 +419,81 @@ const GearSection: React.FC<GearSectionProps> = ({ player, onEquipItem, onUnequi
     );
 };
 
+const CosmeticSection: React.FC<{
+  player: Player;
+  onSetCosmetic: (type: 'TITLE' | 'FRAME' | 'BACKGROUND', id: string | null) => void;
+}> = ({ player, onSetCosmetic }) => {
+  const [filter, setFilter] = useState<'TITLE' | 'FRAME' | 'BACKGROUND'>('TITLE');
+
+  const items = useMemo(() => COSMETICS_DATA.filter(c => c.type === filter), [filter]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        {(['TITLE', 'FRAME', 'BACKGROUND'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setFilter(t)}
+            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
+              filter === t ? 'bg-gold-600 text-black border-gold-400' : 'bg-slate-900/40 text-slate-500 border-white/5 hover:border-white/20'
+            }`}
+          >
+            {t === 'TITLE' ? <Type className="w-3 h-3 mx-auto mb-1" /> : t === 'FRAME' ? <Frame className="w-3 h-3 mx-auto mb-1" /> : <ImageIcon className="w-3 h-3 mx-auto mb-1" />}
+            {t === 'TITLE' ? 'Títulos' : t === 'FRAME' ? 'Marcos' : 'Fondos'}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+        {items.map(item => {
+          const isUnlocked = player.cosmetics.unlockedIds.includes(item.id);
+          const isActive = player.cosmetics.activeTitle === item.id || player.cosmetics.activeFrame === item.id || player.cosmetics.activeBackground === item.id;
+
+          return (
+            <div
+              key={item.id}
+              className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                isActive ? 'bg-gold-600/10 border-gold-500/50' : 'bg-slate-900/40 border-white/5'
+              } ${!isUnlocked && 'opacity-50'}`}
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isActive ? 'text-gold-400' : 'text-slate-200'}`}>{item.name}</span>
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                    item.rarity === 'Legendario' ? 'bg-orange-500/20 text-orange-400' : 
+                    item.rarity === 'Épico' ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {item.rarity}
+                  </span>
+                </div>
+                {item.requirement && <p className="text-[10px] text-slate-500 mt-0.5">Req: {item.requirement}</p>}
+              </div>
+
+              {isUnlocked ? (
+                <button
+                  onClick={() => onSetCosmetic(item.type as any, item.id)}
+                  disabled={isActive}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    isActive ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  {isActive ? 'Activo' : 'Usar'}
+                </button>
+              ) : (
+                <div className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">Bloqueado</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN COMPONENT ---
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, onEquipItem, onUnequipItem, onConsumeItem }) => {
-  const [activeTab, setActiveTab] = useState<'HERO' | 'GEAR'>('HERO'); // Mobile Tab State
+export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, onEquipItem, onUnequipItem, onConsumeItem, onSetCosmetic }) => {
+  const [activeTab, setActiveTab] = useState<'HERO' | 'GEAR' | 'COSMETICS'>('HERO'); // Mobile Tab State
   
   // Memoize Total Stats to avoid recalculation on unrelated renders
   const totalStats = useMemo(() => calculatePlayerTotalStats(player), [player.stats, player.equipment, player.equippedEcho]);
@@ -469,6 +548,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
           >
               Equipo
           </button>
+          <button 
+            onClick={() => setActiveTab('COSMETICS')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'COSMETICS' ? 'bg-slate-800 text-purple-400 shadow-md' : 'text-slate-500'}`}
+          >
+              Estilo
+          </button>
       </div>
 
       {/* 3. MAIN CONTENT AREA (Split on Desktop, Swapped on Mobile) */}
@@ -483,14 +568,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ player, onTrainStat, o
               />
           </div>
 
-          {/* RIGHT PANEL: GEAR & INVENTORY */}
-          <div className={`md:col-span-7 lg:col-span-8 ${activeTab === 'GEAR' ? 'block' : 'hidden md:block'}`}>
-              <GearSection 
+          {/* RIGHT PANEL: GEAR & INVENTORY / COSMETICS */}
+          <div className={`md:col-span-7 lg:col-span-8 ${activeTab === 'GEAR' || activeTab === 'COSMETICS' ? 'block' : 'hidden md:block'}`}>
+              {activeTab === 'COSMETICS' ? (
+                <CosmeticSection player={player} onSetCosmetic={onSetCosmetic} />
+              ) : (
+                <GearSection 
                   player={player} 
                   onEquipItem={onEquipItem} 
                   onUnequipItem={onUnequipItem} 
                   onConsumeItem={onConsumeItem} 
-              />
+                />
+              )}
           </div>
 
       </div>
