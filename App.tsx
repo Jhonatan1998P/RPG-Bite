@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState, BattleLog, Enemy, ArenaOpponent } from './types';
 import { Sidebar } from './components/Layout/Sidebar';
 import { MobileNav } from './components/Layout/MobileNav';
@@ -19,12 +19,30 @@ import { ActiveEventBanner } from './components/UI/ActiveEventBanner'; // New Co
 import { generateBattleNarrative } from './services/geminiService';
 import { simulateCombat } from './utils/gameEngine';
 import { StorageService } from './utils/storage';
-import { Shield } from 'lucide-react';
+import { Shield, Users } from 'lucide-react';
 import { useGameState } from './hooks/useGameState';
+import { useMultiplayer, MultiplayerProvider } from './hooks/useMultiplayer';
+import { MultiplayerMenu } from './components/UI/MultiplayerMenu';
 import { eventBus, EventTypes } from './services/eventBus';
 
 export default function App() {
+  return (
+    <MultiplayerProvider>
+      <AppContent />
+    </MultiplayerProvider>
+  );
+}
+
+function AppContent() {
   const { player, gameStarted, actions } = useGameState();
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const multiplayer = useMultiplayer();
+
+  useEffect(() => {
+    if (multiplayer.isConnected && player) {
+      multiplayer.syncPlayer(player);
+    }
+  }, [multiplayer.isConnected, player?.name, player?.level]);
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.WELCOME);
   
   // UI State for Battle (Animation only)
@@ -163,11 +181,21 @@ export default function App() {
             </h1>
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row flex-grow overflow-hidden p-0 md:p-8 gap-6 max-w-7xl mx-auto w-full">
-            {currentView !== ViewState.BATTLE && <Sidebar currentView={currentView} setView={setCurrentView} onExport={() => StorageService.export(player)} onExit={handleExit} />}
+        <div className="relative z-10 flex flex-col md:flex-row flex-grow overflow-hidden p-2 md:p-8 gap-3 md:gap-6 max-w-7xl mx-auto w-full">
+            {currentView !== ViewState.BATTLE && (
+                <Sidebar 
+                    currentView={currentView} 
+                    setView={setCurrentView} 
+                    onExport={() => StorageService.export(player)} 
+                    onExit={handleExit}
+                    onOpenMultiplayer={() => setShowMultiplayer(true)}
+                    isMultiplayerConnected={multiplayer.isConnected}
+                    peerCount={multiplayer.peers.length}
+                />
+            )}
             
             <main className="flex-grow flex flex-col min-h-0 relative">
-                <div className="flex-grow overflow-y-auto overflow-x-hidden p-4 md:pr-2 pb-24 md:pb-10 custom-scrollbar">
+                <div className="flex-grow overflow-y-auto overflow-x-hidden p-2 md:pr-2 pb-24 md:pb-10 custom-scrollbar">
                     {currentView === ViewState.PROFILE && (
                         <ProfileView 
                             player={player} 
@@ -211,7 +239,21 @@ export default function App() {
                     )}
 
                     {currentView === ViewState.RANKINGS && (
-                        <RankingsView player={player} ladder={player.arenaLadder} />
+                        <RankingsView 
+                            player={player} 
+                            ladder={player.arenaLadder}
+                            remotePlayers={multiplayer.remotePlayers}
+                            onSendGold={(playerId, amount) => {
+                                if (actions.spendGold(amount)) {
+                                    multiplayer.broadcastAction({
+                                        type: 'GIFT_GOLD',
+                                        payload: { amount, toPlayerId: playerId },
+                                        playerId: '',
+                                        timestamp: 0
+                                    });
+                                }
+                            }}
+                        />
                     )}
 
                     {currentView === ViewState.REPORTS && (
@@ -235,7 +277,20 @@ export default function App() {
             </main>
         </div>
 
-        {currentView !== ViewState.BATTLE && <MobileNav currentView={currentView} setView={setCurrentView} onExit={handleExit} />}
+        {currentView !== ViewState.BATTLE && (
+            <MobileNav 
+                currentView={currentView} 
+                setView={setCurrentView} 
+                onExit={handleExit}
+                onOpenMultiplayer={() => setShowMultiplayer(true)}
+                isMultiplayerConnected={multiplayer.isConnected}
+                peerCount={multiplayer.peers.length}
+            />
+        )}
+
+        {showMultiplayer && (
+            <MultiplayerMenu onClose={() => setShowMultiplayer(false)} />
+        )}
     </div>
   );
 }

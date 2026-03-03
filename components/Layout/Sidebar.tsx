@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Scroll, Swords, ShoppingBag, Shield, FileText, TrendingUp, LogOut, Download, Infinity, Hammer } from 'lucide-react';
+import { User, Scroll, Swords, ShoppingBag, Shield, FileText, TrendingUp, LogOut, Download, Infinity, Hammer, Users, Wifi } from 'lucide-react';
 import { ViewState } from '../../types';
 import { TooltipTrigger } from '../UI/TooltipTrigger';
 
@@ -9,9 +9,12 @@ interface SidebarProps {
   setView: (view: ViewState) => void;
   onExport: () => void;
   onExit: () => void;
+  onOpenMultiplayer?: () => void;
+  isMultiplayerConnected?: boolean;
+  peerCount?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onExport, onExit }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onExport, onExit, onOpenMultiplayer, isMultiplayerConnected, peerCount = 0 }) => {
   const navItems = [
     { id: ViewState.PROFILE, label: 'Personaje', icon: User, desc: 'Gestiona tus atributos y equipo.' },
     { id: ViewState.TAVERN, label: 'Taberna', icon: Scroll, desc: 'Acepta misiones para ganar recursos.' },
@@ -58,6 +61,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onExport
           );
         })}
       </nav>
+
+      {onOpenMultiplayer && (
+        <TooltipTrigger content="Juega con otros viajeros" className="w-full">
+          <button
+            onClick={onOpenMultiplayer}
+            className={`
+              w-full group flex items-center p-3.5 rounded-xl transition-all duration-300 border text-left relative overflow-hidden
+              ${isMultiplayerConnected 
+              ? 'bg-gradient-to-r from-green-600/20 to-transparent border-green-500/50 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.2)]' 
+              : 'glass-panel glass-panel-hover border-transparent text-slate-400 hover:text-slate-200 hover:pl-5'
+              }
+            `}
+          >
+            {isMultiplayerConnected ? (
+              <Wifi className={`w-5 h-5 mr-3 transition-transform group-hover:scale-110 text-green-400`} />
+            ) : (
+              <Users className={`w-5 h-5 mr-3 transition-transform group-hover:scale-110 text-slate-500`} />
+            )}
+            <span className="font-serif font-semibold tracking-wide text-sm">
+              {isMultiplayerConnected ? `En línea (${peerCount})` : 'Multijugador'}
+            </span>
+            {isMultiplayerConnected && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+            )}
+          </button>
+        </TooltipTrigger>
+      )}
 
       <div className="mt-auto flex gap-2">
          <button 

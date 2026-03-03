@@ -1,15 +1,18 @@
 
 import React, { useState } from 'react';
-import { User, Scroll, Swords, FileText, ShoppingBag, Menu, X, ChevronRight, Compass, TrendingUp, LogOut, Infinity, Hammer } from 'lucide-react';
+import { User, Scroll, Swords, FileText, ShoppingBag, Menu, X, ChevronRight, Compass, TrendingUp, LogOut, Infinity, Hammer, Users, Wifi } from 'lucide-react';
 import { ViewState } from '../../types';
 
 interface MobileNavProps {
   currentView: ViewState;
   setView: (view: ViewState) => void;
   onExit: () => void;
+  onOpenMultiplayer?: () => void;
+  isMultiplayerConnected?: boolean;
+  peerCount?: number;
 }
 
-export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onExit }) => {
+export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onExit, onOpenMultiplayer, isMultiplayerConnected, peerCount = 0 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Items visible on the main bar
@@ -30,6 +33,17 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onEx
       { id: ViewState.MERCHANT, label: 'Mercader', icon: ShoppingBag, desc: 'Comprar y Vender', color: 'text-purple-400', bg: 'bg-purple-900/20', border: 'border-purple-500/30' },
       { id: ViewState.REPORTS, label: 'Crónicas', icon: FileText, desc: 'Historial de Batallas', color: 'text-slate-400', bg: 'bg-slate-800/50', border: 'border-slate-600/30' },
   ];
+
+  const multiplayerItem = onOpenMultiplayer ? {
+    id: 'multiplayer' as ViewState,
+    label: isMultiplayerConnected ? `En Línea (${peerCount})` : 'Multijugador',
+    icon: isMultiplayerConnected ? Wifi : Users,
+    desc: isMultiplayerConnected ? 'Jugando en sala' : 'Crear o unirse a sala',
+    color: 'text-green-400',
+    bg: 'bg-green-900/20',
+    border: 'border-green-500/30',
+    isMultiplayer: true
+  } : null;
 
   const handleSetView = (view: ViewState) => {
       setView(view);
@@ -79,7 +93,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onEx
                       </button>
                   </div>
 
-                  {/* Grid Content */}
+                      {/* Grid Content */}
                   <div className="p-6 grid grid-cols-1 gap-3 overflow-y-auto pb-safe">
                       {menuGridItems.map((item) => (
                           <button
@@ -107,6 +121,36 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onEx
                               </div>
                           </button>
                       ))}
+                      
+                      {/* Multiplayer Button in Menu */}
+                      {multiplayerItem && (
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            onOpenMultiplayer?.();
+                          }}
+                          className={`
+                              group flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 active:scale-[0.98]
+                              ${isMultiplayerConnected
+                                  ? 'bg-gradient-to-r from-green-900/20 to-slate-900 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.1)]' 
+                                  : 'bg-slate-900/50 border-white/5 hover:bg-slate-800 hover:border-white/10'
+                              }
+                          `}
+                        >
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center border ${multiplayerItem.bg} ${multiplayerItem.border} ${multiplayerItem.color}`}>
+                                <multiplayerItem.icon className="w-6 h-6" />
+                            </div>
+                            <div className="flex-grow text-left">
+                                <h4 className={`font-serif font-bold text-sm ${isMultiplayerConnected ? 'text-green-400' : 'text-slate-200'}`}>
+                                    {multiplayerItem.label}
+                                </h4>
+                                <p className="text-xs text-slate-500">{multiplayerItem.desc}</p>
+                            </div>
+                            <div className={`text-slate-600 transition-transform group-hover:translate-x-1 ${isMultiplayerConnected ? 'text-green-500' : ''}`}>
+                                <ChevronRight className="w-5 h-5" />
+                            </div>
+                        </button>
+                      )}
                       
                        <button
                             onClick={handleLogout}
@@ -167,18 +211,43 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, setView, onEx
             );
           })}
 
-          {/* The Menu Button */}
+          {/* Online/Multiplayer Button */}
+          {onOpenMultiplayer ? (
+            <button
+              onClick={onOpenMultiplayer}
+              className={`
+                flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 w-full active:scale-90
+                ${isMultiplayerConnected ? 'text-green-400' : 'text-slate-500 hover:text-slate-300'}
+              `}
+            >
+              <div className={`relative p-1.5 rounded-lg transition-all ${isMultiplayerConnected ? 'bg-green-500/10' : ''}`}>
+                {isMultiplayerConnected ? (
+                  <Wifi className="w-5 h-5 mb-0.5" />
+                ) : (
+                  <Users className="w-5 h-5 mb-0.5" />
+                )}
+                {isMultiplayerConnected && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></span>
+                )}
+              </div>
+              <span className="text-[9px] font-serif tracking-wider">
+                {isMultiplayerConnected ? `${peerCount}` : 'Online'}
+              </span>
+            </button>
+          ) : null}
+
+          {/* Menu Button */}
           <button
             onClick={() => setIsMenuOpen(true)}
             className={`
               flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 w-full active:scale-90
-              ${isMenuOpen ? 'text-white' : 'text-slate-500'}
+              ${isMenuOpen ? 'text-white' : 'text-slate-500 hover:text-slate-300'}
             `}
           >
-             <div className={`relative p-1.5 rounded-lg transition-all ${isMenuOpen ? 'bg-slate-700' : ''}`}>
-                <Menu className="w-5 h-5 mb-0.5" />
-             </div>
-             <span className="text-[9px] font-serif tracking-wider">Menú</span>
+            <div className={`relative p-1.5 rounded-lg transition-all ${isMenuOpen ? 'bg-slate-700' : ''}`}>
+              <Menu className="w-5 h-5 mb-0.5" />
+            </div>
+            <span className="text-[9px] font-serif tracking-wider">Menú</span>
           </button>
 
         </nav>
