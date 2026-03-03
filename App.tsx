@@ -38,11 +38,25 @@ function AppContent() {
   const [showMultiplayer, setShowMultiplayer] = useState(false);
   const multiplayer = useMultiplayer();
 
+  // Escuchar eventos de multijugador
   useEffect(() => {
     if (multiplayer.isConnected && player) {
       multiplayer.syncPlayer(player);
     }
   }, [multiplayer.isConnected, player?.name, player?.level]);
+
+  // Escuchar cuando se recibe oro
+  useEffect(() => {
+    const handleReceiveGold = (data: { amount: number }) => {
+      if (data?.amount > 0) {
+        actions.addGold(data.amount);
+      }
+    };
+
+    eventBus.on(EventTypes.RECEIVE_GOLD, handleReceiveGold);
+    return () => eventBus.off(EventTypes.RECEIVE_GOLD, handleReceiveGold);
+  }, [actions]);
+
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.WELCOME);
   
   // UI State for Battle (Animation only)

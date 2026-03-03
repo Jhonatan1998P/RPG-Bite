@@ -572,6 +572,14 @@ export const useGameState = () => {
       return false;
   };
 
+  const addGold = (amount: number) => {
+      setPlayer(prev => ({ ...prev, gold: prev.gold + amount }));
+  };
+
+  const addRubies = (amount: number) => {
+      setPlayer(prev => ({ ...prev, rubies: prev.rubies + amount }));
+  };
+
   const spendRubies = (amount: number, reason: 'ENERGY' | 'ARENA' | 'TAVERN') => {
       if (player.rubies >= amount) {
           setPlayer(prev => {
@@ -748,7 +756,9 @@ export const useGameState = () => {
         craftItem,
         salvageItem,
         upgradeItem,
-        setCosmetic
+        setCosmetic,
+        addGold,
+        addRubies
     }
   };
 };

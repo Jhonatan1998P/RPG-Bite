@@ -5,7 +5,8 @@ type EventCallback = (data: any) => void;
 export enum EventTypes {
   SHOW_TOAST = 'SHOW_TOAST',
   SHOW_TOOLTIP = 'SHOW_TOOLTIP',
-  HIDE_TOOLTIP = 'HIDE_TOOLTIP'
+  HIDE_TOOLTIP = 'HIDE_TOOLTIP',
+  RECEIVE_GOLD = 'RECEIVE_GOLD'
 }
 
 export interface ToastData {

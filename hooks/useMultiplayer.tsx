@@ -125,6 +125,7 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
           type: 'info',
           duration: 3000 
         });
+        
         // Request presence from new peer
         sendAction({
           type: 'REQUEST_PRESENCE',
@@ -132,6 +133,14 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
           playerId: playerId,
           timestamp: Date.now(),
         }, peerId);
+        
+        // Also broadcast our presence to everyone (including new peer)
+        broadcastPresence();
+        
+        // Force UI update by re-setting remote players
+        setTimeout(() => {
+          setRemotePlayers([...Array.from(playersRef.current.values())]);
+        }, 500);
       });
 
       // Listen for peer leaves
@@ -168,6 +177,8 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
                 type: 'success',
                 duration: 5000 
               });
+              // Emit event to add gold to player
+              eventBus.emit(EventTypes.RECEIVE_GOLD, { amount: giftData.amount });
             }
             break;
           default:
@@ -181,8 +192,27 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
       setIsConnecting(false);
       setCurrentRoomId(roomId);
       
+      // Broadcast presence to all peers after connection
+      setTimeout(() => {
+        broadcastPresence();
+        // Request presence from all existing peers
+        if (sendActionRef.current) {
+          sendActionRef.current({
+            type: 'REQUEST_PRESENCE',
+            payload: null,
+            playerId: playerId,
+            timestamp: Date.now(),
+          });
+        }
+      }, 1000);
+      
+      // Update UI with current peers
+      setTimeout(() => {
+        setRemotePlayers([...Array.from(playersRef.current.values())]);
+      }, 2000);
+      
       eventBus.emit(EventTypes.SHOW_TOAST, { 
-        message: '¡Conectado! Jugadores en la sala: ' + peers.length, 
+        message: '¡Conectado! Buscando jugadores en la sala...', 
         type: 'success',
         duration: 4000 
       });
