@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Copy, LogIn, PlusCircle, X, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Users, Copy, LogIn, PlusCircle, X, Wifi, WifiOff, Loader2, RefreshCw } from 'lucide-react';
 import { useMultiplayer } from '../../hooks/useMultiplayer';
 import { eventBus, EventTypes } from '../../services/eventBus';
 
@@ -20,11 +20,19 @@ export const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onClose }) => 
     createRoom,
     joinRoomById,
     leave,
+    reconnect,
+    currentRoomId,
   } = useMultiplayer();
 
   const handleCreateRoom = () => {
     const roomId = createRoom();
-    setCreatedRoomId(roomId);
+    if (roomId) {
+      setCreatedRoomId(roomId);
+    }
+  };
+
+  const handleReconnect = () => {
+    reconnect();
   };
 
   const handleJoinRoom = () => {
@@ -84,6 +92,28 @@ export const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onClose }) => 
 
         {!isConnected && !isConnecting && (
           <div className="space-y-4">
+            {/* Botón de reconectar si hay una sala previa */}
+            {currentRoomId && (
+              <button
+                onClick={handleReconnect}
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Reconectar a sala anterior
+              </button>
+            )}
+
+            {currentRoomId && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-700"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-slate-900 text-slate-500">o</span>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleCreateRoom}
               className="w-full flex items-center justify-center gap-2 bg-gold-600 hover:bg-gold-500 text-black font-bold py-3 rounded transition-colors"
@@ -137,24 +167,39 @@ export const MultiplayerMenu: React.FC<MultiplayerMenuProps> = ({ onClose }) => 
               </span>
             </div>
 
-            {createdRoomId && (
+            {/* Mostrar roomId actual (creada o unida) */}
+            {(createdRoomId || currentRoomId) && (
               <div className="bg-slate-800/50 rounded p-3">
-                <p className="text-sm text-slate-400 mb-2">Código de tu sala:</p>
+                <p className="text-sm text-slate-400 mb-2">
+                  {createdRoomId ? 'Código de tu sala:' : 'Sala actual:'}
+                </p>
                 <div className="flex gap-2">
                   <code className="flex-1 bg-slate-900 px-3 py-2 rounded text-gold-400 font-mono text-xs md:text-sm break-all">
-                    {createdRoomId}
+                    {createdRoomId || currentRoomId}
                   </code>
-                  <button
-                    onClick={handleCopyRoomId}
-                    className="bg-slate-700 hover:bg-slate-600 p-2 rounded transition-colors shrink-0"
-                    aria-label="Copiar código"
-                  >
-                    {copied ? (
-                      <span className="text-green-400 text-xs whitespace-nowrap">Copiado</span>
-                    ) : (
-                      <Copy className="w-5 h-5" />
-                    )}
-                  </button>
+                  {(createdRoomId || currentRoomId) && (
+                    <button
+                      onClick={() => {
+                        const roomId = createdRoomId || currentRoomId;
+                        if (roomId) {
+                          navigator.clipboard.writeText(roomId);
+                          eventBus.emit(EventTypes.SHOW_TOAST, {
+                            message: 'Código copiado al portapapeles',
+                            type: 'success',
+                            duration: 2000
+                          });
+                        }
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 p-2 rounded transition-colors shrink-0"
+                      aria-label="Copiar código"
+                    >
+                      {copied ? (
+                        <span className="text-green-400 text-xs whitespace-nowrap">Copiado</span>
+                      ) : (
+                        <Copy className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
