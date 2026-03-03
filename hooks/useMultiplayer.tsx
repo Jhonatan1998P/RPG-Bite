@@ -29,6 +29,7 @@ export interface UseMultiplayerReturn {
   remotePlayers: PlayerPresence[];
   syncPlayer: (player: Player) => void;
   broadcastAction: (action: MultiplayerAction) => void;
+  sendToPeer: (peerId: string, action: MultiplayerAction) => void;
   onRemoteAction: (callback: (action: MultiplayerAction) => void) => void;
   createRoom: () => string;
   joinRoomById: (roomId: string) => void;
@@ -169,9 +170,9 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
             broadcastPresence();
             break;
           case 'GIFT_GOLD':
-            const giftData = action.payload as { amount: number; toPlayerId: string };
-            if (giftData.toPlayerId === playerId) {
-              // We received gold!
+            const giftData = action.payload as { amount: number };
+            if (giftData.amount > 0) {
+              // We received gold! (action was sent specifically to us)
               eventBus.emit(EventTypes.SHOW_TOAST, { 
                 message: `¡Recibiste ${giftData.amount} oro de un jugador!`, 
                 type: 'success',
@@ -266,6 +267,18 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
     sendActionRef.current(actionWithPlayer);
   }, [localPlayerId]);
 
+  const sendToPeer = useCallback((peerId: string, action: MultiplayerAction) => {
+    if (!sendActionRef.current || !localPlayerId) return;
+
+    const actionWithPlayer = {
+      ...action,
+      playerId: localPlayerId,
+      timestamp: Date.now(),
+    };
+    
+    sendActionRef.current(actionWithPlayer, peerId);
+  }, [localPlayerId]);
+
   const onRemoteAction = useCallback((callback: (action: MultiplayerAction) => void) => {
     actionsCallbackRef.current = callback;
   }, []);
@@ -309,6 +322,7 @@ export const MultiplayerProvider: React.FC<MultiplayerProviderProps> = ({ childr
         remotePlayers,
         syncPlayer,
         broadcastAction,
+        sendToPeer,
         onRemoteAction,
         createRoom,
         joinRoomById,

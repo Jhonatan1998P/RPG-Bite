@@ -257,11 +257,11 @@ function AppContent() {
                             player={player} 
                             ladder={player.arenaLadder}
                             remotePlayers={multiplayer.remotePlayers}
-                            onSendGold={(playerId, amount) => {
+                            onSendGold={(peerId, amount) => {
                                 if (actions.spendGold(amount)) {
-                                    multiplayer.broadcastAction({
+                                    multiplayer.sendToPeer(peerId, {
                                         type: 'GIFT_GOLD',
-                                        payload: { amount, toPlayerId: playerId },
+                                        payload: { amount },
                                         playerId: '',
                                         timestamp: 0
                                     });
