@@ -12,7 +12,7 @@ import { Player } from '@/types';
 import { eventBus, EventTypes } from '@/services/eventBus';
 
 // Constants
-const SERVER_URL = 'http://localhost:5000'; // Adjust for production
+const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export interface PlayerPresence {
   id: string;
