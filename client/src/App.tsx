@@ -24,6 +24,7 @@ import { useGameState } from './hooks/useGameState';
 import { useMultiplayer, MultiplayerProvider } from './hooks/useMultiplayer';
 import { MultiplayerMenu } from './components/UI/MultiplayerMenu';
 import { eventBus, EventTypes } from './services/eventBus';
+import { ChatSystem } from './components/ChatSystem';
 
 export default function App() {
   return (
@@ -305,6 +306,9 @@ function AppContent() {
         {showMultiplayer && (
             <MultiplayerMenu onClose={() => setShowMultiplayer(false)} />
         )}
+
+        {/* Global Chat UI accessible anytime */}
+        <ChatSystem />
     </div>
   );
 }
