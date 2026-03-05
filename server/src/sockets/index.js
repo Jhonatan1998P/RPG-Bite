@@ -2,9 +2,10 @@ import { Server } from 'socket.io';
 import { handleConnection } from '../controllers/socketController.js';
 
 export const setupSocket = (server) => {
+  const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : '*';
   const io = new Server(server, {
     cors: {
-      origin: '*', // Adjust for production
+      origin: allowedOrigins,
       methods: ['GET', 'POST']
     }
   });

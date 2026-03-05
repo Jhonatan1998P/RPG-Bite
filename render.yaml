@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: shadowbound-server
+    env: node
+    buildCommand: "cd server && npm install"
+    startCommand: "cd server && npm start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        sync: false # User needs to set this in the Render dashboard to their Vercel domain
